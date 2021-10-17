@@ -1,5 +1,8 @@
 from enum import Enum
 import sys
+from typing import Container
+
+DEBUG = 0
 
 
 class TraceRecord():
@@ -19,52 +22,60 @@ class TraceRecord():
 
 
 class ThreadWakeState(Enum):
-    UNKNOWN = -1
-    SLEEP = 1
-    WAIT = 2
-    RUN = 3
-    DEAD = 4
+    RUNNING = -1
+    WAKING = 128  # W
+    SLEEP = 1  # S
+    RUNNABLE = 256  # R
+    RUNNABLE_PLACEHOLDERS = 0  # R : Applicable only to Swappers, kworkers
+    SLEEP_UNINTERRPUTABLE = 2  # D
+    EXIT_ZOMBIE = 16  # Z
+    EXIT_DEAD = 32  # X
 
 
 class ThreadSchedEvent():
 
-    def __init__(self, timeStamp: float, wakeState: ThreadWakeState = ThreadWakeState.UNKNOWN):
+    def __init__(self, timeStamp: float = 0, wakeState: ThreadWakeState = ThreadWakeState.RUNNING):
         self.wakeState = wakeState
         self.timeStamp = timeStamp
 
 
 class Thread():
-
-    currentSchedState: ThreadSchedEvent
-    currentSysCall: str = None  # when thread acts as a destination w.r.t request
-    recipientTraceState: dict = dict()
-    """
-        Recipient State Store (mutable - only until end point
-        Popped upon end condition: both booleans true)
-        Network: Definition of a state (Thread receiving a request)
-        Technical Specification: Dict(STIPP:attributes) in the destiation
-            State Type: Fork OR Network
-            STTIP- Source: Thread, Trace, IP, Port
-            Start time
-            End time
-            Boolean for whether response was sent: 
-            Boolean for request from different STTIP
-    """
-    recipientTraceLog: list()  # when thread acts as a destination w.r.t request
-    """       
-        Recipient Thread Log (Append - only LOG)
-        Just a list of Recipient trace states
-
-    """
-    requestorTraceState: dict()  # when thread acts as a source w.r.t request (must have the reference of the same object at the destination)
-    """
-        Requestor State Store (Append only log per key (appened by the recipient only)
-        Key:Value of TraceID:State Object(STTIP, attributes)
-    """
-
-    def __init__(self, pid: int, container: str):
+    def __init__(self, pid: int, container: str, currentSchedState: ThreadSchedEvent = ThreadSchedEvent()):
         self.pid = pid
         self.container = container
+        self.currentSchedState: ThreadSchedEvent = ThreadSchedEvent
+        self.currentSysCall: str = None  # when thread acts as a destination w.r.t request
+        self.recipientTraceState: dict = dict()
+        """
+           Recipient State Store (mutable - only until end point
+           Popped upon end condition: both booleans true)
+           Network: Definition of a state (Thread receiving a request)
+           Technical Specification: Dict(STIPP:attributes) in the destiation
+               State Type: Fork OR Network
+               STTIP- Source: Thread, Trace, IP, Port
+               Start time
+               End time
+               Boolean for whether response was sent:
+               Boolean for request from different STTIP
+       """
+        self.recipientTraceLog: list()  # when thread acts as a destination w.r.t request
+        """
+           Recipient Thread Log (Append - only LOG)
+           Just a list of Recipient trace states
+
+       """
+        self.requestorTraceState: dict(
+        )  # when thread acts as a source w.r.t request (must have the reference of the same object at the destination)
+        """
+           Requestor State Store (Append only log per key (appened by the recipient only)
+           Key:Value of TraceID:State Object(STTIP, attributes)
+       """
+
+    def __str__(self) -> str:
+        return f"PID:{self.pid} Container:{self.container}"
+
+    def updateThread(self, traceRecord: TraceRecord):
+        pass
 
 
 class SocketElement():
@@ -158,6 +169,19 @@ class ThreadPool():
         return False
 
 # pass input of report (raw format) through "sed -E 's/,\s*/,/g'""
+
+
+# Create threads which exist upon container startup
+threadPool = ThreadPool()
+with open("traceData/pids.txt", "r") as pidData:
+    for line in pidData.readlines():
+        pid, container, _ = line.strip().split()
+        pid = int(pid)
+        threadPool.addThread(Thread(pid, container))
+
+if (DEBUG == 1):
+    for thread in threadPool.ActiveThreadPool.values():
+        print(thread)
 
 
 for line in sys.stdin:
