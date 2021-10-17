@@ -1,15 +1,18 @@
 from enum import Enum
 import sys
 
+
 class TraceRecord():
 
     def __init__(self, lineString: str):
+        # <idle>-0     [016] 56701.429653: sched_switch:          prev_comm=swapper/16 prev_pid=0 prev_prio=120 prev_state=0 next_comm=mongod next_pid=23939 next_prio=120
         lineContents = lineString.strip().split()
-        self.pid = int(lineContents[0].split('-')[-1])
+        self.pid = int(lineContents[0].split('-')[-1])  # 0 is command-pid
+        # 1 is cpu in the format [cpuNo.]
         self.cpu = int(lineContents[1][1:-1])
-        self.timeStamp = float(lineContents[2][:-1])
-        self.event = lineContents[3][:-1]
-        self.details = dict()
+        self.timeStamp = float(lineContents[2][:-1])  # 2 is timestamp with ':'
+        self.event = lineContents[3][:-1]  # 3 is the event with ':'
+        self.details = dict()  # 4 is the dictionary to store all attributes of the event
         for content in lineContents[4:]:
             attribute, value = content.split('=')
             self.details[attribute] = value
@@ -31,7 +34,7 @@ class ThreadSchedEvent():
 
 
 class Thread():
-    # threadSchedEventList: list = list()
+
     currentSchedState: ThreadSchedEvent
     currentSysCall: str = None  # when thread acts as a destination w.r.t request
     recipientTraceState: dict = dict()
@@ -63,7 +66,37 @@ class Thread():
         self.pid = pid
         self.container = container
 
+
+class SocketElement():
+
+    def __init__(self, socketCookie: int, srcIP: str, destIP: str, srcPort: int, destPort: int):
+        self.socketCookie = socketCookie
+        self.srcIP = srcIP
+        self.destIP = destIP
+        self.srcPort = srcPort
+        self.destPort = destPort
+        self.srcThread = None
+        self.destThread = None
+
+    def updateSrcThread(self, srcThread: Thread):
+        self.srcThread = srcThread
+
+    def updateDestThread(self, destThread: Thread):
+        self.destThread = destThread
+
 # class RootEvents():
+
+
+class ThreadForkState():
+
+    def __init__(self,  srcThread: Thread, traceID: int, startTimeStamp: float):
+        self.srcThread: Thread = srcThread
+        self.traceID: int = traceID
+        self.startTimeStamp: float = startTimeStamp
+        self.endTimeStamp: float = startTimeStamp  # remember to update accordingly
+
+    def updateEndTime(self, endTimeStamp: float):
+        self.endTimeStamp = endTimeStamp
 
 
 class ThreadTraceState():
@@ -73,8 +106,8 @@ class ThreadTraceState():
         self.srcIP: str = srcIP
         self.srcPort: int = srcPort
         self.traceID: int = traceID
-        self.endTimeStamp: int = startTimeStamp
-        self.startTimeStamp: int = startTimeStamp
+        self.endTimeStamp: float = startTimeStamp  # remember to update accordingly
+        self.startTimeStamp: float = startTimeStamp
         self.responseSentOnce: bool = 0
         self.newSrcObserved: bool = 0
 
@@ -84,8 +117,20 @@ class ThreadTraceState():
     def setResponseSentOnce(self):
         self.responseSentOnce = True
 
+    def updateEndTime(self, endTimeStamp: float):
+        self.endTimeStamp = endTimeStamp
+
+
+class DestinationReference():
+
+    def __init__(self, destThread: Thread, state: ThreadTraceState or ThreadForkState):
+        # stores the destination state (either fork or trace)
+        self.state = state
+        self.thread = destThread  # stores the destination thread
+
 
 class ThreadPool():
+
     ActiveThreadPool = dict()  # key is PID, value is a Thread object
     DeadThreadPool = list()  # contains Dead Thread objects
 
@@ -113,6 +158,7 @@ class ThreadPool():
         return False
 
 # pass input of report (raw format) through "sed -E 's/,\s*/,/g'""
+
 
 for line in sys.stdin:
     record = TraceRecord(line)
