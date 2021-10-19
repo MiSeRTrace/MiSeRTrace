@@ -29,34 +29,6 @@ class SocketElement():
 
 
 
-class ThreadPool():
-
-    def __init__(self):
-        self.ActiveThreadPool = dict()  # key is PID, value is a Thread object
-        self.DeadThreadPool = list()  # contains Dead Thread objects
-
-    def freeActiveThreadPool(self):
-        for key in list(self.ActiveThreadPool.keys()):
-            self.DeadThreadPool.append(self.ActiveThreadPool.pop(key))
-
-    def addThread(self, newThread: Thread):
-        if newThread.pid not in self.ActiveThreadPool:
-            self.ActiveThreadPool[newThread.pid] = newThread
-            return True
-        return False
-
-    def killThread(self, killThread: Thread):
-        if killThread.pid in self.ActiveThreadPool:
-            self.DeadThreadPool.append(
-                self.ActiveThreadPool.pop(killThread.pid))
-            return True
-        return False
-
-    def killPid(self, killPid: int):
-        if killPid in self.ActiveThreadPool:
-            self.DeadThreadPool.append(self.ActiveThreadPool.pop(killPid))
-            return True
-        return False
 
 # pass input of report (raw format) through "sed -E 's/,\s*/,/g'""
 
