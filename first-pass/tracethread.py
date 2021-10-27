@@ -26,7 +26,7 @@ class Thread():
         self.container = container
         self.currentSchedState: ThreadSchedEvent = ThreadSchedEvent
         self.currentSysCall: str = None  # when thread acts as a destination w.r.t request
-        self.recipientTraceState: dict = dict()
+        self.traceStates: dict = dict()
         """
            Recipient State Store (mutable - only until end point
            Popped upon end condition: both booleans true)
@@ -38,14 +38,15 @@ class Thread():
                End time
                Boolean for whether response was sent:
                Boolean for request from different STTIP
+           Each key-value pair in this dictionary stores the state wrt one incoming TCP connection
        """
-        self.recipientTraceLog: list()  # when thread acts as a destination w.r.t request
+        self.traceLog: list()  # when thread acts as a destination w.r.t request
         """
            Recipient Thread Log (Append - only LOG)
            Just a list of Recipient trace states
 
        """
-        self.requestorTraceState: dict(
+        self.destinationTraceStates: dict(
         )  # when thread acts as a source w.r.t request (must have the reference of the same object at the destination)
         """
            Requestor State Store (Append only log per key (appened by the recipient only)
@@ -99,3 +100,7 @@ class DestinationReference():
         # stores the destination state (either fork or trace)
         self.state: ThreadTraceState or ThreadForkState = state
         self.thread = destThread  # stores the destination thread
+
+
+if __name__ == "__main__":
+    TraceRecord

@@ -1,10 +1,12 @@
 from tracethread import *
 
+
 class ThreadPool():
 
     def __init__(self):
         self.activeThreadPool = dict()  # key is PID, value is a Thread object
         self.deadThreadPool = list()  # contains Dead Thread objects
+        # Thread is dead on a sched_switch with Z or X
 
     def freeActiveThreadPool(self):
         for key in list(self.activeThreadPool.keys()):
