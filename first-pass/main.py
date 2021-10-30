@@ -12,20 +12,16 @@ DEBUG = 0
 
 # class RootEvents():
 
+
+traceProcessor = TraceProcessor()
+
+# Function assumed format as PID, container, container id
+# Output is of command ________ #TODO
+traceProcessor.initializeThreadPool("first-pass/traceData/pids.txt")
+
 # pass input of report (raw format) through "sed -E 's/,\s*/,/g'""
 # Create threads which exist upon container startup
-threadPool = ThreadPool()
-with open("first-pass/traceData/pids.txt", "r") as initialThreads:
-    for line in initialThreads.readlines():
-        pid, container, _ = line.strip().split()
-        pid = int(pid)
-        threadPool.addThread(Thread(pid, container))
-
-if (DEBUG == 1):
-    for thread in threadPool.ActiveThreadPool.values():
-        print(thread)
-
-
 for line in sys.stdin:
     record = TraceRecord(line)
+    traceProcessor.consumeRecord(record)
     print(record.pid, record.cpu, record.timeStamp, record.event, record.details)
