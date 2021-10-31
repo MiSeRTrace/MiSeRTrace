@@ -1,4 +1,5 @@
 from tracethread import *
+from tracerecord import *
 
 
 class ThreadPool():
@@ -7,6 +8,10 @@ class ThreadPool():
         self.activeThreadPool = dict()  # key is PID, value is a Thread object
         self.deadThreadPool = list()  # contains Dead Thread objects
         # Thread is dead on a sched_switch with Z or X
+    
+    def processSched(self,record:TraceRecord):
+        pass
+        
 
     def freeActiveThreadPool(self):
         for key in list(self.activeThreadPool.keys()):
@@ -17,6 +22,11 @@ class ThreadPool():
             self.activeThreadPool[newThread.pid] = newThread
             return True
         return False
+    
+    def getThread(self,pid:int):
+        if pid in self.activeThreadPool:
+            return self.activeThreadPool[pid]
+        return None
 
     def killThread(self, killThread: Thread):
         if killThread.pid in self.activeThreadPool:
