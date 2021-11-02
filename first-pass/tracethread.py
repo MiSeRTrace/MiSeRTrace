@@ -1,7 +1,7 @@
 from enum import Enum
 from tracerecord import TraceRecord
-from tracesocketpool import *
-from tracethreadpool import ThreadPool
+from socketpool import *
+from threadpool import ThreadPool
 
 
 class ThreadWakeState(Enum):
@@ -74,7 +74,7 @@ class Thread():
         pass
 
 
-class ThreadForkState():
+class ThreadState():
     def __init__(self, srcThread: Thread, traceID: int, startTimeStamp: float):
         self.srcThread: Thread = srcThread
         self.traceID: int = traceID
@@ -85,15 +85,16 @@ class ThreadForkState():
         self.endTimeStamp = endTimeStamp
 
 
-class ThreadTraceState():
+class ForkThreadState(ThreadState):
+    pass
+
+
+class NetworkThreadState(ThreadState):
     def __init__(self, srcThread: Thread, traceID: int, srcIP: str,
                  srcPort: int, startTimeStamp: float):
-        self.srcThread: Thread = srcThread
+        super(NetworkThreadState, self).__init__(srcThread, traceID, startTimeStamp)
         self.srcIP: str = srcIP
         self.srcPort: int = srcPort
-        self.traceID: int = traceID
-        self.endTimeStamp: float = startTimeStamp  # remember to update accordingly
-        self.startTimeStamp: float = startTimeStamp
         self.responseSentOnce: bool = 0
         self.newSrcObserved: bool = 0
 
@@ -103,14 +104,11 @@ class ThreadTraceState():
     def setResponseSentOnce(self):
         self.responseSentOnce = True
 
-    def updateEndTime(self, endTimeStamp: float):
-        self.endTimeStamp = endTimeStamp
-
 
 class DestinationReference():
-    def __init__(self, destThread: Thread, state: ThreadTraceState
-                 or ThreadForkState):
+    def __init__(self, destThread: Thread, state: NetworkThreadState
+                 or ForkThreadState):
         # stores the destination state (either fork or trace)
-        self.state: ThreadTraceState or ThreadForkState = state
+        self.state: NetworkThreadState or ForkThreadState = state
         self.thread = destThread  # stores the destination thread
 

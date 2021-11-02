@@ -1,5 +1,5 @@
-from tracesocketpool import *
-from tracethreadpool import *
+from socketpool import *
+from threadpool import *
 from tracerecord import *
 from globalstatemanager import GlobalStateManager
 

@@ -4,9 +4,9 @@ from enum import Enum
 from tracerecord import TraceRecord
 from traceprocessor import *
 from tracethread import *
-from tracethreadpool import *
+from threadpool import *
 from tracesocket import *
-from tracesocketpool import *
+from socketpool import *
 
 traceProcessor = TraceProcessor(pathToPIDListFile=sys.argv[1],
                                 gatewayIP=sys.argv[2])

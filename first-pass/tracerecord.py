@@ -8,6 +8,7 @@ class TraceRecord():
         self.timeStamp = float(lineContents[2][:-1])  # 2 is timestamp with ':'
         self.event = lineContents[3][:-1]  # 3 is the event with ':'
         self.details = dict()  # 4 is the dictionary to store all attributes of the event
+        self.command = "-".join(lineContents[0].split('-')[:-1])
         for content in lineContents[4:]:
             # In case there isn't any key value pair
             try:
