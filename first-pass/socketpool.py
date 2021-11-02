@@ -2,7 +2,6 @@ from tracesocket import *
 
 
 class SocketPool():
-
     def __init__(self):
 
         # key is a tuple of srcIp, srcPort,sock_cookie

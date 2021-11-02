@@ -5,10 +5,9 @@ from globalstatemanager import GlobalStateManager
 
 
 class TraceProcessor():
-
-    def __init__(self, pathToPIDListFile: str,gatewayIP:str):
-        self.threadPool: ThreadPool = ThreadPool()
+    def __init__(self, pathToPIDListFile: str, gatewayIP: str):
         self.socketPool: SocketPool = SocketPool()
+        self.threadPool: ThreadPool = ThreadPool(self.socketPool)
         # self.globalStateManager: GlobalStateManager = GlobalStateManager(
         #     gsClasses=gsClasses)
         self.previousTimeStamp: float = 0.0
@@ -16,8 +15,10 @@ class TraceProcessor():
             for line in initialThreads.readlines():
                 pid, container, _ = line.strip().split()
                 pid = int(pid)
-                self.threadPool.addThread(Thread(pid, container))
-        self.gatewayIP=gatewayIP
+                self.threadPool.addThread(
+                    Thread(pid, container, self.threadPool, self.socketPool,
+                           ThreadSchedEvent(0, ThreadWakeState.WAKING)))
+        self.gatewayIP = gatewayIP
 
     # basic validation checks can be added here
     def _validRecord(self, record: TraceRecord):
@@ -27,8 +28,8 @@ class TraceProcessor():
             return True
         return False
 
-    def processThread(self,record:TraceRecord):
-        thread:Thread = self.threadPool.getThread(record.pid)
+    def processThread(self, record: TraceRecord):
+        thread: Thread = self.threadPool.getThread(record.pid)
         if thread:
             thread.consumeRecord(record)
 
@@ -36,5 +37,4 @@ class TraceProcessor():
         if not self._validRecord(record):
             return False
         self.threadPool.processSched(record)
-        self.processThread(record)
-
+        # self.processThread(record)

@@ -1,7 +1,6 @@
 from enum import Enum
 from tracerecord import TraceRecord
 from socketpool import *
-from threadpool import ThreadPool
 
 
 class ThreadWakeState(Enum):
@@ -27,18 +26,20 @@ class Thread():
     def __init__(self,
                  pid: int,
                  container: str,
-                 threadPool: ThreadPool,
+                 threadPool,
                  socketPool: SocketPool,
                  currentSchedState: ThreadSchedEvent = ThreadSchedEvent()):
         self.pid = pid
         self.container = container
         self.currentSchedState: ThreadSchedEvent = currentSchedState
         self.currentSysCall: str = None  # when thread acts as a destination w.r.t request
-        self.traceStates: dict = dict()
-        self.threadPool: ThreadPool = threadPool
+
+        self.forkThreadState: ForkThreadState = None
+        self.threadPool = threadPool
         self.socketPool: SocketPool = socketPool
+        self.networkThreadStates: dict[tuple, NetworkThreadState] = dict()
         """
-           Recipient State Store (mutable - only until end point
+           Network Trace States(mutable - only until end point
            Popped upon end condition: both booleans true)
            Network: Definition of a state (Thread receiving a request)
            Technical Specification: Dict(STIPP:attributes) in the destiation
@@ -50,25 +51,27 @@ class Thread():
                Boolean for request from different STTIP
            Each key-value pair in this dictionary stores the state wrt one incoming TCP connection
         """
-        self.traceLog: list(
-        )  # when thread acts as a destination w.r.t request
+        self.intermediateThreadStates: dict[tuple, NetworkThreadState] = dict()
+        self.networkThreadStateLog: list[NetworkThreadState] = list()
+        # when thread acts as a destination w.r.t request
         """
            Recipient Thread Log (Append - only LOG)
            Just a list of Recipient trace states
 
         """
-        self.destinationTraceStates: dict(
-        )  # when thread acts as a source w.r.t request (must have the reference of the same object at the destination)
+        self.destinationThreadStates: dict[
+            int, list[DestinationReference]] = dict()
+        # when thread acts as a source w.r.t request (must have the reference of the same object at the destination)
         """
            Requestor State Store (Append only log per key (appened by the recipient only)
            Key:Value of TraceID:State Object(STTIP, attributes)
         """
 
-    def initialiseThreadPool(self,):
-        pass
-
-    # def __str__(self) -> str:
-    #     return f"PID:{self.pid} Container:{self.container}"
+    def setCurrentSchedState(
+            self,
+            timeStamp: float = 0,
+            wakeState: ThreadWakeState = ThreadWakeState.RUNNING):
+        self.currentSchedState = ThreadSchedEvent(timeStamp, wakeState)
 
     def consumeRecord(self, record: TraceRecord):
         pass
@@ -92,7 +95,8 @@ class ForkThreadState(ThreadState):
 class NetworkThreadState(ThreadState):
     def __init__(self, srcThread: Thread, traceID: int, srcIP: str,
                  srcPort: int, startTimeStamp: float):
-        super(NetworkThreadState, self).__init__(srcThread, traceID, startTimeStamp)
+        super(NetworkThreadState, self).__init__(srcThread, traceID,
+                                                 startTimeStamp)
         self.srcIP: str = srcIP
         self.srcPort: int = srcPort
         self.responseSentOnce: bool = 0
@@ -109,6 +113,5 @@ class DestinationReference():
     def __init__(self, destThread: Thread, state: NetworkThreadState
                  or ForkThreadState):
         # stores the destination state (either fork or trace)
-        self.state: NetworkThreadState or ForkThreadState = state
-        self.thread = destThread  # stores the destination thread
-
+        self.threadState: NetworkThreadState or ForkThreadState = state
+        self.thread: Thread = destThread  # stores the destination thread

@@ -9,8 +9,8 @@ class SocketStatus(Enum):
 
 
 class SocketElement():
-
-    def __init__(self, srcIp: str, srcPort: int, destIp: str, destPort: int, sockCookie: int or str):
+    def __init__(self, srcIp: str, srcPort: int, destIp: str, destPort: int,
+                 sockCookie: int or str):
         self.srcIp: str = srcIp
         self.srcPort: int = srcPort
         self.destIp: str = destIp
