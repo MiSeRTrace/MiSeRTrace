@@ -11,11 +11,11 @@ from socketpool import *
 traceProcessor = TraceProcessor(pathToPIDListFile=sys.argv[1],
                                 gatewayIP=sys.argv[2])
 
-
-# pass input of report (raw format) through "sed -E 's/,\s*/,/g'""
-# Create threads which exist upon container startup
+# pass report (raw format -r) through "sed -E 's/,\s*/,/g'""
+# [a, b, c] => [a,b,c]
 
 for line in sys.stdin:
     record = TraceRecord(line)
-    traceProcessor.consumeRecord(record)
-    # print(record.pid, record.cpu, record.timeStamp, record.event, record.details)
+    if not traceProcessor.consumeRecord(record):
+        print("Record Validation Failed")
+        exit()
