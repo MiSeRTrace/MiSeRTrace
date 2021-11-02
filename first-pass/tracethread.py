@@ -1,6 +1,6 @@
 from enum import Enum
-from tracerecord import TraceRecord
-from socketpool import *
+from tracerecord import *
+from traceprocessor import TraceProcessor
 
 
 class ThreadWakeState(Enum):
@@ -26,8 +26,7 @@ class Thread():
     def __init__(self,
                  pid: int,
                  container: str,
-                 threadPool,
-                 socketPool: SocketPool,
+                 traceProcessor: TraceProcessor,
                  currentSchedState: ThreadSchedEvent = ThreadSchedEvent()):
         self.pid = pid
         self.container = container
@@ -35,8 +34,7 @@ class Thread():
         self.currentSysCall: str = None  # when thread acts as a destination w.r.t request
 
         self.forkThreadState: ForkThreadState = None
-        self.threadPool = threadPool
-        self.socketPool: SocketPool = socketPool
+        self.traceProcessor = traceProcessor
         self.networkThreadStates: dict[tuple, NetworkThreadState] = dict()
         """
            Network Trace States(mutable - only until end point
@@ -59,10 +57,11 @@ class Thread():
            Just a list of Recipient trace states
 
         """
+        """
         self.destinationThreadStates: dict[
             int, list[DestinationReference]] = dict()
         # when thread acts as a source w.r.t request (must have the reference of the same object at the destination)
-        """
+        
            Requestor State Store (Append only log per key (appened by the recipient only)
            Key:Value of TraceID:State Object(STTIP, attributes)
         """
@@ -72,6 +71,16 @@ class Thread():
             timeStamp: float = 0,
             wakeState: ThreadWakeState = ThreadWakeState.RUNNING):
         self.currentSchedState = ThreadSchedEvent(timeStamp, wakeState)
+
+    def setForkThreadState(self, forkThreadState):
+        self.forkThreadState = forkThreadState
+
+    def setDestinationReference(self, traceID: int, destinationReference):
+        if traceID:
+            self.destinationThreadStates[traceID]
+            return True
+        else:
+            return False
 
     def consumeRecord(self, record: TraceRecord):
         pass

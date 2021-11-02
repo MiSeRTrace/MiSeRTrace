@@ -1,6 +1,7 @@
 from socketpool import *
 from threadpool import *
 from tracerecord import *
+from tracethread import Thread
 from globalstatemanager import GlobalStateManager
 
 
@@ -16,7 +17,7 @@ class TraceProcessor():
                 pid, container, _ = line.strip().split()
                 pid = int(pid)
                 self.threadPool.addThread(
-                    Thread(pid, container, self.threadPool, self.socketPool,
+                    Thread(pid, container, self,
                            ThreadSchedEvent(0, ThreadWakeState.WAKING)))
 
     def consumeRecord(self, record: TraceRecord):

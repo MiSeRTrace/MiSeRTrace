@@ -13,6 +13,8 @@ class ThreadPool():
     def processSched(self, record: TraceRecord):
         if 'sched' in record.event:
             print(len(self.activeThreadPool))
+
+        # sched_switch event: Changes the wake state of a thread
         if record.event == 'sched_switch':
             prevThread: Thread = self.activeThreadPool.get(
                 int(record.details['prev_pid']))
@@ -25,6 +27,7 @@ class ThreadPool():
             if nextThread:
                 nextThread.setCurrentSchedState(record.timeStamp,
                                                 ThreadWakeState.RUNNING)
+        # sched_process_exit: Event observed when a thread dies
         elif record.event == 'sched_process_exit':
             dyingThread: Thread = self.getThread(record.pid)
             if dyingThread:
@@ -38,7 +41,7 @@ class ThreadPool():
                     )
             # else:
             # print("MAJOR ERROR, Thread in LOG AND NOT IN POOL")
-
+        # sched_process_fork: Event observed when a thread forks
         elif record.event == 'sched_process_fork':
             parentThread: Thread = self.getThread(
                 int(record.details['parent_pid']))
@@ -53,6 +56,42 @@ class ThreadPool():
                     print(
                         f"Thread could not be added into the pool\nDuplicate PID {record.pid}"
                     )
+
+                # Create forkThreadState on the child thread
+
+                # Getting a source of the parent
+                # Typically there is only one state maintained in the parent thread
+                # ASSUMPTION: Cases of multiple states occour only in leaf containers
+                # A key (i.e. a source-tuple) is picked and the same TraceID is propagated
+                # If the parent does not belong to any trace, None will be the trace of the child thread
+                """
+                Cases to be handled:
+                    Simultaneous network and fork states in a thread
+                    Multiple active states (network/fork) before fork
+                    A(has network and fork states) forks B(which gets states from A and gets its own states) 
+                        which inturn forks C(which gets states from both A and B)
+                """
+                if not (parentThread.networkThreadStates
+                        or parentThread.forkThreadState):
+                    parentTraceID = None
+                else:
+                    if parentThread.forkThreadState:
+                        parentTraceID = parentThread.forkThreadState.traceID
+                    elif parentThread.networkThreadStates:
+                        keys = parentThread.networkThreadStates.keys()
+                        stateSource = keys[-1]
+                        parentState = parentThread.networkThreadStates[
+                            stateSource]
+                        parentTraceID = parentState.traceID
+
+                forkThreadState = ForkThreadState(parentThread, parentTraceID,
+                                                  record.timeStamp)
+                newThread.setForkThreadState(forkThreadState)
+                # Setting Destination Reference for the parent thread
+                destinationReference = DestinationReference(
+                    newThread, forkThreadState)
+                parentThread.setDestinationReference(parentTraceID,
+                                                     destinationReference)
 
             # else:
             #     print("MAJOR ERROR, Thread in LOG AND NOT IN POOL")
