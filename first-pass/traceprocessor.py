@@ -8,14 +8,15 @@ class TraceProcessor():
     def __init__(self, pathToPIDListFile: str, gatewayIP: str):
         self.threadPool: ThreadPool = ThreadPool()
         self.socketPool: SocketPool = SocketPool()
+        self.gatewayIP = gatewayIP
         # self.globalStateManager: GlobalStateManager = GlobalStateManager(
         #     gsClasses=gsClasses)
         with open(pathToPIDListFile, "r") as initialThreads:
             for line in initialThreads.readlines():
                 pid, container, _ = line.strip().split()
                 pid = int(pid)
-                self.threadPool.addThread(Thread(pid, container))
-        self.gatewayIP = gatewayIP
+                self.threadPool.addThread(
+                    Thread(pid, container, self.threadPool, self.socketPool))
 
     def consumeRecord(self, record: TraceRecord):
         if not self._validRecord(record):
