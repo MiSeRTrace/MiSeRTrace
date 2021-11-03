@@ -1,6 +1,7 @@
 from enum import Enum
 from tracerecord import *
 from traceprocessor import TraceProcessor
+from threadstate import ForkThreadState, NetworkThreadState
 
 
 class ThreadWakeState(Enum):
@@ -33,7 +34,7 @@ class Thread():
         self.currentSchedState: ThreadSchedEvent = currentSchedState
         self.currentSysCall: str = None  # when thread acts as a destination w.r.t request
 
-        self.forkThreadState: ForkThreadState = None
+        self.forkThreadState: list[ForkThreadState] = list()
         self.traceProcessor = traceProcessor
         self.networkThreadStates: dict[tuple, NetworkThreadState] = dict()
         """
@@ -57,11 +58,12 @@ class Thread():
            Just a list of Recipient trace states
 
         """
-        """
-        self.destinationThreadStates: dict[
-            int, list[DestinationReference]] = dict()
+
+        self.destinationThreadStates: dict[int,
+                                           list[NetworkThreadState
+                                                or ForkThreadState]] = dict()
         # when thread acts as a source w.r.t request (must have the reference of the same object at the destination)
-        
+        """
            Requestor State Store (Append only log per key (appened by the recipient only)
            Key:Value of TraceID:State Object(STTIP, attributes)
         """
@@ -72,50 +74,64 @@ class Thread():
             wakeState: ThreadWakeState = ThreadWakeState.RUNNING):
         self.currentSchedState = ThreadSchedEvent(timeStamp, wakeState)
 
-    def setForkThreadState(self, forkThreadState):
-        self.forkThreadState = forkThreadState
+    def addForkThreadState(self, forkThreadState):
+        self.forkThreadState.append(forkThreadState)
+        forkThreadState.srcThread.setDestinationReference(
+            forkThreadState.traceID, forkThreadState)
+
+    def isCompoundForkThreadState(self):
+        return len(self.forkThreadState) > 1
 
     def setDestinationReference(self, traceID: int, destinationReference):
         if traceID:
-            self.destinationThreadStates[traceID]
+            self.destinationThreadStates[traceID] = destinationReference
             return True
         else:
             return False
 
     def consumeRecord(self, record: TraceRecord):
-        pass
+        #Sending message: Logic
+        #   {
+        #   Check if request/response	(Using socket)
+        #   Create/Update Socket
+        # 	Set Socket Parameters, thread
+        # 	Check if destination in Recipient Trace state
+        #   
+        #   #Request
+        # 	Update socket -> set as request
+        
+        # 	#Response
+        # 	Update socket -> set as response
+        # 	Update Current Trace State Store Booleans and accordingly push to intermediate
+        # 	Update end time in both current and intermediate store
+        #   }
+
+        #     #Receiving message: Logic
+        #     {
+        #     	#Response
+            
+        #     #Request
+        # If Check for front-end container
+        # Insert TraceID
+        # Create State(STTIP)Special case
+        # Else:
+        # Find sender socket
+        # Find source thread
+        # Create ThreadTraceState(STTIP)
+        # 		Create Destination Reference
+        # 	If data of same STTIP in intermediate buffer
+        # 	Move state from intermediate to logs
+        # If data of same STTIP in tracestatestore
+        # 	Update end time (Helps in scenario where no response)
+
+        # 	Update Current Trace State Store Booleans, and accordingly push to intermediate
+        # Init Start/End
+        # Add to RecipientStateStore
+        # }
+        # }
 
 
-class ThreadState():
-    def __init__(self, srcThread: Thread, traceID: int, startTimeStamp: float):
-        self.srcThread: Thread = srcThread
-        self.traceID: int = traceID
-        self.startTimeStamp: float = startTimeStamp
-        self.endTimeStamp: float = startTimeStamp  # remember to update accordingly
-
-    def updateEndTime(self, endTimeStamp: float):
-        self.endTimeStamp = endTimeStamp
-
-
-class ForkThreadState(ThreadState):
-    pass
-
-
-class NetworkThreadState(ThreadState):
-    def __init__(self, srcThread: Thread, traceID: int, srcIP: str,
-                 srcPort: int, startTimeStamp: float):
-        super(NetworkThreadState, self).__init__(srcThread, traceID,
-                                                 startTimeStamp)
-        self.srcIP: str = srcIP
-        self.srcPort: int = srcPort
-        self.responseSentOnce: bool = 0
-        self.newSrcObserved: bool = 0
-
-    def setNewSrcObserved(self):
-        self.newSrcObserved = True
-
-    def setResponseSentOnce(self):
-        self.responseSentOnce = True
+        
 
 
 class DestinationReference():

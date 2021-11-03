@@ -1,5 +1,4 @@
 from tracethread import *
-from tracerecord import *
 from socketpool import *
 
 
@@ -70,28 +69,28 @@ class ThreadPool():
                     Multiple active states (network/fork) before fork
                     A(has network and fork states) forks B(which gets states from A and gets its own states) 
                         which inturn forks C(which gets states from both A and B)
-                """
-                if not (parentThread.networkThreadStates
-                        or parentThread.forkThreadState):
-                    parentTraceID = None
-                else:
-                    if parentThread.forkThreadState:
-                        parentTraceID = parentThread.forkThreadState.traceID
-                    elif parentThread.networkThreadStates:
-                        keys = parentThread.networkThreadStates.keys()
-                        stateSource = keys[-1]
-                        parentState = parentThread.networkThreadStates[
-                            stateSource]
-                        parentTraceID = parentState.traceID
 
-                forkThreadState = ForkThreadState(parentThread, parentTraceID,
-                                                  record.timeStamp)
-                newThread.setForkThreadState(forkThreadState)
-                # Setting Destination Reference for the parent thread
-                destinationReference = DestinationReference(
-                    newThread, forkThreadState)
-                parentThread.setDestinationReference(parentTraceID,
-                                                     destinationReference)
+
+                    Threads which do not have states belonging to a trace will not propagate
+                    a traceless state to the child
+                    For example, Root thread A(does not service requests) forks B
+                    B will not have a fork state with respect to A
+                    This is to ensure useless fork states are not propagated further
+                    If B receives a request, the trace of that request will be propagated upon the fork of B to C
+                """
+
+                for parentForkState in parentThread.forkThreadState:
+                    parentTraceID = parentForkState.traceID
+                    forkThreadState = ForkThreadState(parentThread, newThread,
+                                                      parentTraceID,
+                                                      record.timeStamp)
+                    newThread.addForkThreadState(forkThreadState)
+                for parentNetworkState in parentThread.networkThreadStates:
+                    parentTraceID = parentNetworkState.traceID
+                    forkThreadState = ForkThreadState(parentThread, newThread,
+                                                      parentTraceID,
+                                                      record.timeStamp)
+                    newThread.addForkThreadState(forkThreadState)
 
             # else:
             #     print("MAJOR ERROR, Thread in LOG AND NOT IN POOL")

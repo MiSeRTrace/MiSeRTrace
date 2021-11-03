@@ -3,27 +3,25 @@ from tracesocket import *
 
 class SocketPool():
     def __init__(self):
-
-        # key is a tuple of srcIp, srcPort,sock_cookie
-        self.activeSocketPool: dict[tuple, SocketElement] = dict()
-        # append only, objects inside are immutable
-        self.destroyedSocketPool: list[SocketElement] = list()
+        # key is a tuple of srcIp, srcPort,destIp, destPort
+        self.socketPool: dict[tuple, SocketElement] = dict()
 
     def addSocket(self, socketElement: SocketElement):
         key = (socketElement.srcIp, socketElement.srcPort,
-               socketElement.sockCookie)
-        if key not in self.activeSocketPool:
-            self.activeSocketPool[key] = socketElement
+               socketElement.destIp, socketElement.destPort)
+        if key not in self.socketPool:
+            self.socketPool[key] = socketElement
             return True
         return False
 
-    def getActiveSocket(self, srcIp: str, srcPort: int, sockCookie: int):
-        key = (srcIp, srcPort, sockCookie)
-        return self.activeSocketPool.get(key)
+    def getSocket(self, srcIp: str, srcPort: int, destIp: str, destPort: int):
+        key = (srcIp, srcPort, destIp, destPort)
+        return self.socketPool.get(key)
 
-    def destroyActiveSocket(self, srcIp: str, srcPort: int, sockCookie: int):
-        key = (srcIp, srcPort, sockCookie)
-        if key in self.activeSocketPool:
-            self.destroyedSocketPool.append(self.activeSocketPool.pop(key))
+    def deleteSocket(self, srcIp: str, srcPort: int, destIp: str,
+                     destPort: int):
+        key = (srcIp, srcPort, destIp, destPort)
+        if key in self.socketPool:
+            self.socketPool.pop(key)
             return True
         return False
