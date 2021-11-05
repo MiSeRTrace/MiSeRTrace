@@ -2,6 +2,7 @@ from enum import Enum
 from tracerecord import *
 from traceprocessor import TraceProcessor
 from threadstate import ForkThreadState, NetworkThreadState
+from tracesocket import SocketElement, SocketStatus
 
 
 class ThreadWakeState(Enum):
@@ -23,6 +24,38 @@ class ThreadSchedEvent():
         self.timeStamp = timeStamp
 
 
+class SendSyscallState():
+    def __init__(self):
+        self.inetSockSetStateObserved = False
+        self.tcpProbeObserved = False
+        self.request = True
+        self.response = False
+
+    def inetSockSetStateObserved(self):
+        self.inetSockSetStateObserved = True
+
+    def tcpProbeObserved(self):
+        self.tcpProbeObserved = True
+
+    def isTcpProbeObserved(self):
+        return self.tcpProbeObserved
+
+    def isInetSockSetStateObserved(self):
+        return self.inetSockSetStateObserved
+
+    def setAsResponseState(self):
+        self.isRequest = False
+        self.isResponse = True
+
+    def isResponse(self):
+        return self.response
+
+
+class RecvSyscallState():
+    def __init__(self):
+        pass
+
+
 class Thread():
     def __init__(self,
                  pid: int,
@@ -32,11 +65,10 @@ class Thread():
         self.pid = pid
         self.container = container
         self.currentSchedState: ThreadSchedEvent = currentSchedState
-        self.currentSysCall: str = None  # when thread acts as a destination w.r.t request
 
         self.forkThreadState: list[ForkThreadState] = list()
         self.traceProcessor = traceProcessor
-        self.networkThreadStates: dict[tuple, NetworkThreadState] = dict()
+        self.networkThreadStates: dict[tuple, NetworkThreadState] = dict()  #
         """
            Network Trace States(mutable - only until end point
            Popped upon end condition: both booleans true)
@@ -82,61 +114,122 @@ class Thread():
     def isCompoundForkThreadState(self):
         return len(self.forkThreadState) > 1
 
-    def setDestinationReference(self, traceID: int, destinationReference):
+    def addNetworkThreadState(self, networkThreadState, source):
+        self.networkThreadStates[source] = networkThreadState
+        networkThreadState.srcThread.setDestinationReference(
+            networkThreadState.traceID, networkThreadState)
+
+    def addDestinationReference(self, traceID: int, destinationReference):
         if traceID:
             self.destinationThreadStates[traceID] = destinationReference
-            return True
         else:
-            return False
+            print("Failed to add Destination Reference")
+            exit()
 
     def consumeRecord(self, record: TraceRecord):
-        #Sending message: Logic
-        #   {
-        #   Check if request/response	(Using socket)
-        #   Create/Update Socket
-        # 	Set Socket Parameters, thread
-        # 	Check if destination in Recipient Trace state
-        #   
-        #   #Request
-        # 	Update socket -> set as request
-        
-        # 	#Response
-        # 	Update socket -> set as response
-        # 	Update Current Trace State Store Booleans and accordingly push to intermediate
-        # 	Update end time in both current and intermediate store
-        #   }
+        if record.event == "sys_enter_sendto":
+            self.tcpState = SendSyscallState()
 
-        #     #Receiving message: Logic
-        #     {
-        #     	#Response
-            
-        #     #Request
-        # If Check for front-end container
-        # Insert TraceID
-        # Create State(STTIP)Special case
-        # Else:
-        # Find sender socket
-        # Find source thread
-        # Create ThreadTraceState(STTIP)
-        # 		Create Destination Reference
-        # 	If data of same STTIP in intermediate buffer
-        # 	Move state from intermediate to logs
-        # If data of same STTIP in tracestatestore
-        # 	Update end time (Helps in scenario where no response)
+        if type(self.tcpState) == SendSyscallState:
+            if record.event == "inet_sock_set_state":
+                self.tcpState.inetSockSetStateObserved()
 
-        # 	Update Current Trace State Store Booleans, and accordingly push to intermediate
-        # Init Start/End
-        # Add to RecipientStateStore
-        # }
-        # }
+            if record.event == "tcp_probe":
+                self.tcpState.tcpProbeObserved()
+                if not self.tcpState.isInetSockSetStateObserved():
+                    #TODO Identify destination tuple
+                    destinationTuple = ()
 
+                    # Check if sending request/response
+                    for source in self.networkThreadStates:
+                        threadState = self.networkThreadStates[source]
+                        self.tcpState.setAsResponseState()
 
-        
+                    #Handle each case
 
+                #TODO check reversal of source and destination address
+                isResponse = self.tcpState.isResponse()
+                if isResponse:
+                    socketStatus = SocketStatus.RESPONSE
+                else:
+                    socketStatus = SocketStatus.REQUEST
+                self.traceProcessor.socketPool.addSocket(
+                    SocketElement(record.details["saddr"],
+                                  record.details["sport"],
+                                  record.details["daddr"],
+                                  record.details["dport"],
+                                  record.details["sock_cookie"], socketStatus,
+                                  self))
 
-class DestinationReference():
-    def __init__(self, destThread: Thread, state: NetworkThreadState
-                 or ForkThreadState):
-        # stores the destination state (either fork or trace)
-        self.threadState: NetworkThreadState or ForkThreadState = state
-        self.thread: Thread = destThread  # stores the destination thread
+            if record.event == "sys_exit_sendto":
+                del (self.tcpState)
+                self.tcpState = None
+
+        if record.event == "sys_enter_recvfrom":
+            self.tcpState = RecvSyscallState()
+
+        if type(self.tcpState) == RecvSyscallState:
+            #TODO identify if request or response
+            isRequest = None
+
+            if record.event == "tcp_rcv_space_adjust":
+                # Check if Frontend container
+                if record.details["saddr"] == self.traceProcessor.gatewayIP:
+                    traceID = TraceProcessor.nextTraceID()
+                    sourcePort = record.details["dport"]
+                    networkThreadState = NetworkThreadState(
+                        None, self, traceID, self.traceProcessor.gatewayIP,
+                        sourcePort, record.timeStamp)
+                else:
+                    if isRequest:
+                        sourceIP = record.details["daddr"]
+                        sourcePort = record.details["dport"]
+                        destinationIP = record.details["saddr"]
+                        destinationPort = record.details["sport"]
+                        sourceSocket = self.traceProcessor.socketPool.getSocket(
+                            sourceIP, sourcePort, destinationIP,
+                            destinationPort)
+                        sourceThread = sourceSocket.srcThread
+
+                        incomingRequestTraces = list()
+                        for networkStateKey in sourceThread.networkThreadStates:
+                            incomingRequestTraces.append(networkStateKey[1])
+
+                        # Check if a state already exists in the current network states
+                        # Logic to move into intermediate
+                        for networkStateKey in self.networkThreadStates:
+                            sourceThreadToBeChecked = networkStateKey[0]
+                            netState = self.networkThreadStates[
+                                networkStateKey]
+                            canBeMovedToIntermediate = netState.responseSentOnce and sourceThread != sourceThreadToBeChecked and netState.traceID in incomingRequestTraces
+                            if canBeMovedToIntermediate:
+                                netState.setNewSrcObserved()
+                                self.intermediateThreadStates[(
+                                    sourceThread, netState.traceID)] = netState
+
+                        # Move existing state to permanent log due to it incoming request being from same source
+                        for networkStateKey in self.intermediateThreadStates:
+                            sourceThreadToBeChecked = networkStateKey[0]
+                            netState = self.networkThreadStates[
+                                networkStateKey]
+                            if (sourceThread == sourceThreadToBeChecked and
+                                    netState.traceID in incomingRequestTraces):
+                                self.networkThreadStateLog[(
+                                    sourceThread, netState.traceID)] = netState
+
+                        # Create a child state for each network thread state in the parent
+                        for networkStateKey in sourceThread.networkThreadStates:
+                            traceID = networkStateKey[1]
+                            # Checking if state already exists
+                            if (sourceThread, traceID
+                                ) not in self.networkThreadStates and (
+                                    sourceThread, traceID
+                                ) not in self.intermediateThreadStates:
+                                networkThreadState = NetworkThreadState(
+                                    sourceThread, self, traceID, sourceIP,
+                                    sourcePort, record.timeStamp)
+                                self.addNetworkThreadState(networkThreadState)
+
+            elif record.event == "sys_exit_recvfrom":
+                del (self.tcpState)
+                self.tcpState = None

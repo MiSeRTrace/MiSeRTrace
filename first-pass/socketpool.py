@@ -1,4 +1,4 @@
-from tracesocket import *
+    from tracesocket import *
 
 
 class SocketPool():
@@ -14,12 +14,12 @@ class SocketPool():
             return True
         return False
 
-    def getSocket(self, srcIp: str, srcPort: int, destIp: str, destPort: int):
+    def getSocket(self, srcIp: str, srcPort: str, destIp: str, destPort: str):
         key = (srcIp, srcPort, destIp, destPort)
         return self.socketPool.get(key)
 
-    def deleteSocket(self, srcIp: str, srcPort: int, destIp: str,
-                     destPort: int):
+    def deleteSocket(self, srcIp: str, srcPort: str, destIp: str,
+                     destPort: str):
         key = (srcIp, srcPort, destIp, destPort)
         if key in self.socketPool:
             self.socketPool.pop(key)

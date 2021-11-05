@@ -17,3 +17,14 @@ class TraceRecord():
             except:
                 print("Potential error in trace record parsing")
                 exit()
+
+        if self.event == "tcp_rcv_space_adjust" or self.event == "tcp_probe":
+            self.details["saddr"] = self.extractAddr("saddr")
+            self.details["daddr"] = self.extractAddr("daddr")
+
+    def extractAddr(self, addrType):
+        addr = self.details[addrType][6:-1].split(",")
+        if len(addr) == 4:
+            return ",".join(addr)
+        else:
+            return ",".join(addr[4:8])

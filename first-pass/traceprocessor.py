@@ -9,7 +9,9 @@ class TraceProcessor():
     def __init__(self, pathToPIDListFile: str, gatewayIP: str):
         self.socketPool: SocketPool = SocketPool()
         self.threadPool: ThreadPool = ThreadPool(self.socketPool)
-        self.gatewayIP = gatewayIP
+        self.traceID = 0
+        self.gatewayIP = ",".join(
+            [str(hex(int(i)))[2:] for i in gatewayIP.split(".")])
         # self.globalStateManager: GlobalStateManager = GlobalStateManager(
         #     gsClasses=gsClasses)
         with open(pathToPIDListFile, "r") as initialThreads:
@@ -35,3 +37,7 @@ class TraceProcessor():
         thread: Thread = self.threadPool.getThread(record.pid)
         if thread:
             thread.consumeRecord(record)
+
+    def nextTraceID(self):
+        self.traceID += 1
+        return self.traceID

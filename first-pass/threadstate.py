@@ -20,11 +20,11 @@ class ForkThreadState(ThreadState):
 
 class NetworkThreadState(ThreadState):
     def __init__(self, srcThread: Thread, handlingThread: Thread, traceID: int,
-                 srcIP: str, srcPort: int, startTimeStamp: float):
+                 srcIP: str, srcPort: str, startTimeStamp: float):
         super(NetworkThreadState, self).__init__(srcThread, handlingThread,
                                                  traceID, startTimeStamp)
         self.srcIP: str = srcIP
-        self.srcPort: int = srcPort
+        self.srcPort: str = srcPort
         self.responseSentOnce: bool = False
         self.newSrcObserved: bool = False
 
