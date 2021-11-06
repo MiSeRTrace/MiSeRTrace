@@ -43,13 +43,6 @@ class SendSyscallState():
     def isInetSockSetStateObserved(self):
         return self.inetSockSetStateObserved
 
-    def setAsResponseState(self):
-        self.isRequest = False
-        self.isResponse = True
-
-    def isResponse(self):
-        return self.response
-
 
 class RecvSyscallState():
     def __init__(self):
@@ -127,6 +120,13 @@ class Thread():
             exit()
 
     def consumeRecord(self, record: TraceRecord):
+        """
+        destroy sock
+        Sender side create both sockets
+        tcp_probe for both req and ack - check if this happens always
+        Clear socket after use
+        Network state based on fork
+        """
         if record.event == "sys_enter_sendto":
             self.tcpState = SendSyscallState()
 
@@ -135,43 +135,75 @@ class Thread():
                 self.tcpState.inetSockSetStateObserved()
 
             if record.event == "tcp_probe":
-                self.tcpState.tcpProbeObserved()
-                if not self.tcpState.isInetSockSetStateObserved():
-                    #TODO Identify destination tuple
-                    destinationTuple = ()
+                # Updating Socket Cookie for the second tcp_probe
+                destinationIP = record.details["daddr"]
+                destinationPort = record.details["dport"]
+                sourceIP = record.details["saddr"]
+                sourcePort = record.details["sport"]
+                if self.tcpState.tcpProbeObserved(
+                ) and not self.tcpState.inetSockSetStateObserved():
+                    receiverSock = self.traceProcessor.socketPool.getSocket(
+                        destinationIP, destinationPort, sourceIP, sourcePort)
+                    self.traceProcessor.socketPool.updateSocket()
+                    if receiverSock:
+                        self.traceProcessor.socketPool.updateSocket(
+                            receiverSock, receiverSock.socketStatus, None,
+                            record.details["sock_cookie"])
+                    else:
+                        print(
+                            "ERROR: Receiver Socket did not get created on the first TCP Probe"
+                        )
+                        exit()
 
-                    # Check if sending request/response
-                    for source in self.networkThreadStates:
-                        threadState = self.networkThreadStates[source]
-                        self.tcpState.setAsResponseState()
+                if not self.tcpState.isInetSockSetStateObserved(
+                ) and not self.tcpState.tcpProbeObserved():
+                    self.tcpState.tcpProbeObserved()
+                    # Identify if request or response
+                    isRequest = True
+                    for networkState in self.networkThreadStates:
+                        threadState = self.networkThreadStates[networkState]
+                        if threadState.srcIP == destinationIP and threadState.srcPort == destinationPort:
+                            isRequest = False
 
-                    #Handle each case
+                    if isRequest:
+                        senderSock = self.traceProcessor.socketPool.getSocket(
+                            sourceIP, sourcePort, destinationIP,
+                            destinationPort)
+                        if not senderSock:
+                            self.traceProcessor.socketPool.addSocket(
+                                SocketElement(sourceIP, sourcePort,
+                                              destinationIP, destinationPort,
+                                              SocketStatus.REQUEST, self))
+                        else:
+                            self.traceProcessor.socketPool.updateSocket(
+                                senderSock, SocketStatus.REQUEST, self)
 
-                #TODO check reversal of source and destination address
-                isResponse = self.tcpState.isResponse()
-                if isResponse:
-                    socketStatus = SocketStatus.RESPONSE
-                else:
-                    socketStatus = SocketStatus.REQUEST
-                self.traceProcessor.socketPool.addSocket(
-                    SocketElement(record.details["saddr"],
-                                  record.details["sport"],
-                                  record.details["daddr"],
-                                  record.details["dport"],
-                                  record.details["sock_cookie"], socketStatus,
-                                  self))
+                        receiverSock = self.traceProcessor.socketPool.getSocket(
+                            destinationIP, destinationPort, sourceIP,
+                            sourcePort)
+                        if not receiverSock:
+                            self.traceProcessor.socketPool.addSocket(
+                                SocketElement(destinationIP, destinationPort,
+                                              sourceIP, sourcePort,
+                                              SocketStatus.REQUEST, None))
+                        else:
+                            self.traceProcessor.socketPool.updateSocket(
+                                receiverSock, SocketStatus.REQUEST, None)
+                    # Case where the thread is sending a response
+                    else:
+                        pass
 
             if record.event == "sys_exit_sendto":
                 del (self.tcpState)
                 self.tcpState = None
 
+        # RECEIVING LOGIC
         if record.event == "sys_enter_recvfrom":
             self.tcpState = RecvSyscallState()
 
         if type(self.tcpState) == RecvSyscallState:
-            #TODO identify if request or response
-            isRequest = None
 
+            isRequest = None
             if record.event == "tcp_rcv_space_adjust":
                 # Check if Frontend container
                 if record.details["saddr"] == self.traceProcessor.gatewayIP:
@@ -180,17 +212,20 @@ class Thread():
                     networkThreadState = NetworkThreadState(
                         None, self, traceID, self.traceProcessor.gatewayIP,
                         sourcePort, record.timeStamp)
+                    self.addNetworkThreadState(networkThreadState)
                 else:
-                    if isRequest:
-                        sourceIP = record.details["daddr"]
-                        sourcePort = record.details["dport"]
-                        destinationIP = record.details["saddr"]
-                        destinationPort = record.details["sport"]
-                        sourceSocket = self.traceProcessor.socketPool.getSocket(
-                            sourceIP, sourcePort, destinationIP,
-                            destinationPort)
-                        sourceThread = sourceSocket.srcThread
+                    sourceIP = record.details["daddr"]
+                    sourcePort = record.details["dport"]
+                    destinationIP = record.details["saddr"]
+                    destinationPort = record.details["sport"]
+                    sourceSocket = self.traceProcessor.socketPool.getSocket(
+                        sourceIP, sourcePort, destinationIP, destinationPort)
+                    sourceThread = sourceSocket.srcThread
+                    isRequest = False
+                    if sourceSocket.socketStatus == SocketStatus.REQUEST:
+                        isRequest = True
 
+                    if isRequest:
                         incomingRequestTraces = list()
                         for networkStateKey in sourceThread.networkThreadStates:
                             incomingRequestTraces.append(networkStateKey[1])
@@ -217,7 +252,7 @@ class Thread():
                                 self.networkThreadStateLog[(
                                     sourceThread, netState.traceID)] = netState
 
-                        # Create a child state for each network thread state in the parent
+                        # Create a child state for each (network thread state in the parent)
                         for networkStateKey in sourceThread.networkThreadStates:
                             traceID = networkStateKey[1]
                             # Checking if state already exists

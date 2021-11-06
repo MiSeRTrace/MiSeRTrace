@@ -13,15 +13,15 @@ class SocketElement():
                  srcPort: str,
                  destIp: str,
                  destPort: str,
-                 sockCookie: str,
                  socketStatus: SocketStatus,
                  srcThread: Thread,
+                 sockCookie: str = None,
                  dataLen: int = None):
         self.srcIp: str = srcIp
         self.srcPort: str = srcPort
         self.destIp: str = destIp
         self.destPort: str = destPort
-        self.sockCookie: str = sockCookie
         self.socketStatus: SocketStatus = socketStatus
         self.srcThread: Thread = srcThread
+        self.sockCookie: str = sockCookie
         self.dataLen: int = dataLen

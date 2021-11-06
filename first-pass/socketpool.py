@@ -1,4 +1,5 @@
-    from tracesocket import *
+from tracesocket import *
+from tracethread import Thread
 
 
 class SocketPool():
@@ -14,13 +15,23 @@ class SocketPool():
             return True
         return False
 
+    def updateSocket(self, socketElement: SocketElement,
+                     socketStatus: SocketStatus, srcThread: Thread):
+        key = (socketElement.srcIp, socketElement.srcPort,
+               socketElement.destIp, socketElement.destPort)
+        if key in self.socketPool:
+            self.socketPool[key].socketStatus = socketStatus
+            self.socketPool[key].srcThread = srcThread
+            return True
+        return False
+
     def getSocket(self, srcIp: str, srcPort: str, destIp: str, destPort: str):
         key = (srcIp, srcPort, destIp, destPort)
         return self.socketPool.get(key)
 
-    def deleteSocket(self, srcIp: str, srcPort: str, destIp: str,
-                     destPort: str):
-        key = (srcIp, srcPort, destIp, destPort)
+    def deleteSocket(self, socketElement: SocketElement):
+        key = (socketElement.srcIp, socketElement.srcPort,
+               socketElement.destIp, socketElement.destPort)
         if key in self.socketPool:
             self.socketPool.pop(key)
             return True
