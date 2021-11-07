@@ -33,3 +33,9 @@ class NetworkThreadState(ThreadState):
 
     def setResponseSentOnce(self):
         self.responseSentOnce = True
+
+    def isNewSrcObserved(self):
+        return self.newSrcObserved
+
+    def isResponseSentOnce(self):
+        return self.responseSentOnce

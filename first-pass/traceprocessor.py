@@ -8,7 +8,7 @@ from globalstatemanager import GlobalStateManager
 class TraceProcessor():
     def __init__(self, pathToPIDListFile: str, gatewayIP: str):
         self.socketPool: SocketPool = SocketPool()
-        self.threadPool: ThreadPool = ThreadPool(self.socketPool)
+        self.threadPool: ThreadPool = ThreadPool(self)
         self.traceID = 0
         self.gatewayIP = ",".join(
             [str(hex(int(i)))[2:] for i in gatewayIP.split(".")])
@@ -20,20 +20,22 @@ class TraceProcessor():
                 pid = int(pid)
                 self.threadPool.addThread(
                     Thread(pid, container, self,
-                           ThreadSchedEvent(0, ThreadWakeState.WAKING)))
+                           ThreadSchedState(0, ThreadWakeState.WAKING)))
 
     def consumeRecord(self, record: TraceRecord):
         if not self._validRecord(record):
             return False
-        self.threadPool.processSched(record)
-        self.processThread(record)
+        if 'sched' in record.event:
+            self.threadPool.processSchedEvents(record)
+        else:
+            self.processEvents(record)
         return True
 
     # basic validation checks can be added here
     def _validRecord(self, record: TraceRecord):
         return True
 
-    def processThread(self, record: TraceRecord):
+    def processEvents(self, record: TraceRecord):
         thread: Thread = self.threadPool.getThread(record.pid)
         if thread:
             thread.consumeRecord(record)

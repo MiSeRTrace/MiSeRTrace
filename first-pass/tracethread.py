@@ -16,7 +16,7 @@ class ThreadWakeState(Enum):
     EXIT_DEAD = 32  # X
 
 
-class ThreadSchedEvent():
+class ThreadSchedState():
     def __init__(self,
                  timeStamp: float = 0,
                  wakeState: ThreadWakeState = ThreadWakeState.RUNNING):
@@ -54,14 +54,14 @@ class Thread():
                  pid: int,
                  container: str,
                  traceProcessor: TraceProcessor,
-                 currentSchedState: ThreadSchedEvent = ThreadSchedEvent()):
+                 currentSchedState: ThreadSchedState = ThreadSchedState()):
         self.pid = pid
         self.container = container
-        self.currentSchedState: ThreadSchedEvent = currentSchedState
-
-        self.forkThreadState: list[ForkThreadState] = list()
         self.traceProcessor = traceProcessor
-        self.networkThreadStates: dict[tuple, NetworkThreadState] = dict()  #
+        self.currentSchedState: ThreadSchedState = currentSchedState
+
+        self.forkThreadStates: list[ForkThreadState] = list()
+        self.networkThreadStates: dict[tuple, NetworkThreadState] = dict()
         """
            Network Trace States(mutable - only until end point
            Popped upon end condition: both booleans true)
@@ -97,27 +97,25 @@ class Thread():
             self,
             timeStamp: float = 0,
             wakeState: ThreadWakeState = ThreadWakeState.RUNNING):
-        self.currentSchedState = ThreadSchedEvent(timeStamp, wakeState)
+        self.currentSchedState.timeStamp = timeStamp
+        self.currentSchedState.wakeState = wakeState
 
-    def addForkThreadState(self, forkThreadState):
-        self.forkThreadState.append(forkThreadState)
-        forkThreadState.srcThread.setDestinationReference(
+    def addForkThreadState(self, forkThreadState: ForkThreadState):
+        self.forkThreadStates.append(forkThreadState)
+        forkThreadState.srcThread.addDestinationReference(
             forkThreadState.traceID, forkThreadState)
 
     def isCompoundForkThreadState(self):
-        return len(self.forkThreadState) > 1
+        return len(self.forkThreadStates) > 1
 
-    def addNetworkThreadState(self, networkThreadState, source):
+    def addNetworkThreadState(self, networkThreadState: NetworkThreadState,
+                              source):
         self.networkThreadStates[source] = networkThreadState
-        networkThreadState.srcThread.setDestinationReference(
+        networkThreadState.srcThread.addDestinationReference(
             networkThreadState.traceID, networkThreadState)
 
     def addDestinationReference(self, traceID: int, destinationReference):
-        if traceID:
-            self.destinationThreadStates[traceID] = destinationReference
-        else:
-            print("Failed to add Destination Reference")
-            exit()
+        self.destinationThreadStates[traceID].append(destinationReference)
 
     def consumeRecord(self, record: TraceRecord):
         """
@@ -140,20 +138,24 @@ class Thread():
                 destinationPort = record.details["dport"]
                 sourceIP = record.details["saddr"]
                 sourcePort = record.details["sport"]
-                if self.tcpState.tcpProbeObserved(
-                ) and not self.tcpState.inetSockSetStateObserved():
-                    receiverSock = self.traceProcessor.socketPool.getSocket(
-                        destinationIP, destinationPort, sourceIP, sourcePort)
-                    self.traceProcessor.socketPool.updateSocket()
-                    if receiverSock:
-                        self.traceProcessor.socketPool.updateSocket(
-                            receiverSock, receiverSock.socketStatus, None,
-                            record.details["sock_cookie"])
-                    else:
-                        print(
-                            "ERROR: Receiver Socket did not get created on the first TCP Probe"
-                        )
-                        exit()
+                senderSock = self.traceProcessor.socketPool.getSocket(
+                    sourceIP, sourcePort, destinationIP, destinationPort)
+
+                # USE THIS SECTION IS SOCKET COOKIE IS NEEDED
+                # UPDATE UPDATESOCKET FUNCTION IN ORDER TO TAKE COOKIE AS PARAMETER
+                # if self.tcpState.tcpProbeObserved(
+                # ) and not self.tcpState.inetSockSetStateObserved():
+                #     receiverSock = self.traceProcessor.socketPool.getSocket(
+                #         destinationIP, destinationPort, sourceIP, sourcePort)
+                #     if receiverSock:
+                #         self.traceProcessor.socketPool.updateSocket(
+                #             receiverSock, receiverSock.socketStatus, None,
+                #             record.details["sock_cookie"]) # This parameter isn't taken
+                #     else:
+                #         print(
+                #             "ERROR: Receiver Socket did not get created on the first TCP Probe"
+                #         )
+                #         exit()
 
                 if not self.tcpState.isInetSockSetStateObserved(
                 ) and not self.tcpState.tcpProbeObserved():
@@ -164,11 +166,7 @@ class Thread():
                         threadState = self.networkThreadStates[networkState]
                         if threadState.srcIP == destinationIP and threadState.srcPort == destinationPort:
                             isRequest = False
-
                     if isRequest:
-                        senderSock = self.traceProcessor.socketPool.getSocket(
-                            sourceIP, sourcePort, destinationIP,
-                            destinationPort)
                         if not senderSock:
                             self.traceProcessor.socketPool.addSocket(
                                 SocketElement(sourceIP, sourcePort,
@@ -191,7 +189,52 @@ class Thread():
                                 receiverSock, SocketStatus.REQUEST, None)
                     # Case where the thread is sending a response
                     else:
-                        pass
+                        senderSock = self.traceProcessor.socketPool.getSocket(
+                            sourceIP, sourcePort, destinationIP,
+                            destinationPort)
+                        if not senderSock:
+                            print(
+                                "ERROR: Socket to send response was not found")
+                            exit()
+                        else:
+                            # Add the thread object to the socket, update socket status to be a response
+                            self.traceProcessor.socketPool.updateSocket(
+                                senderSock, SocketStatus.RESPONSE, self)
+                            """
+                            Get the X object
+                                Opposite socket's source thread
+                            Use X object as key in the Y's network thread states
+                            Update boolean - response sent
+                            Update end time in current and intermediate stores
+                            Move to intermediate if another request has arrived
+                            """
+
+                            destinationSock = self.traceProcessor.socketPool.getSocket(
+                                destinationIP, destinationPort, sourceIP,
+                                sourcePort)
+                            destinationThread = destinationSock.srcThread
+
+                            for networkStateKey in self.intermediateThreadStates:
+                                if networkStateKey[0] == destinationThread:
+                                    threadState = self.networkThreadStates[
+                                        networkStateKey]
+                                    threadState.updateEndTime(record.timeStamp)
+
+                            threadStateToPop = list()
+                            for networkStateKey in self.networkThreadStates:
+                                if networkStateKey[0] == destinationThread:
+                                    threadState = self.networkThreadStates[
+                                        networkStateKey]
+                                    threadState.setResponseSentOnce()
+                                    threadState.updateEndTime(record.timeStamp)
+                                    if threadState.isNewSrcObserved(
+                                    ) and threadState.isResponseSentOnce():
+                                        self.intermediateThreadStates[
+                                            networkStateKey] = threadState
+                                        threadStateToPop.append(
+                                            networkStateKey)
+                            for networkStateKey in threadStateToPop:
+                                self.networkThreadStates.pop(networkState)
 
             if record.event == "sys_exit_sendto":
                 del (self.tcpState)
@@ -232,15 +275,21 @@ class Thread():
 
                         # Check if a state already exists in the current network states
                         # Logic to move into intermediate
+                        threadToPop = list()
                         for networkStateKey in self.networkThreadStates:
                             sourceThreadToBeChecked = networkStateKey[0]
                             netState = self.networkThreadStates[
                                 networkStateKey]
-                            canBeMovedToIntermediate = netState.responseSentOnce and sourceThread != sourceThreadToBeChecked and netState.traceID in incomingRequestTraces
-                            if canBeMovedToIntermediate:
+                            if sourceThread != sourceThreadToBeChecked and netState.traceID not in incomingRequestTraces:
                                 netState.setNewSrcObserved()
+                            if netState.responseSentOnce and netState.isNewSrcObserved(
+                            ):
                                 self.intermediateThreadStates[(
                                     sourceThread, netState.traceID)] = netState
+                                threadToPop.append(networkStateKey)
+                        # Removing all the threads from activethreadstate which got moved to intermediate store
+                        for networkStateKey in threadToPop:
+                            self.networkThreadStates.pop(networkStateKey)
 
                         # Move existing state to permanent log due to it incoming request being from same source
                         for networkStateKey in self.intermediateThreadStates:
@@ -259,6 +308,19 @@ class Thread():
                             if (sourceThread, traceID
                                 ) not in self.networkThreadStates and (
                                     sourceThread, traceID
+                                ) not in self.intermediateThreadStates:
+                                networkThreadState = NetworkThreadState(
+                                    sourceThread, self, traceID, sourceIP,
+                                    sourcePort, record.timeStamp)
+                                self.addNetworkThreadState(networkThreadState)
+
+                        # Create a child state for each (fork thread state in the parent)
+                        for forkState in sourceThread.forkThreadStates:
+                            forkTraceID = forkState.traceID
+                            # Assuming two threads with the same parent, do not send requests over TCP between them
+                            if (sourceThread, forkTraceID
+                                ) not in self.networkThreadStates and (
+                                    sourceThread, forkTraceID
                                 ) not in self.intermediateThreadStates:
                                 networkThreadState = NetworkThreadState(
                                     sourceThread, self, traceID, sourceIP,
