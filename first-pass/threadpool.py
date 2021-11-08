@@ -1,14 +1,5 @@
 from tracethread import *
-"""
-TODO
-# Thread is dead on a sched_switch with Z or X
-Threads which do not have states belonging to a trace will not propagate
-a traceless state to the child
-For example, Root thread A(does not service requests) forks B
-B will not have a fork state with respect to A
-This is to ensure useless fork states are not propagated further
-If B receives a request, the trace of that request will be propagated upon the fork of B to C
-"""
+# TODO - Thread is dead on a sched_switch with Z or X
 
 
 class ThreadPool():
