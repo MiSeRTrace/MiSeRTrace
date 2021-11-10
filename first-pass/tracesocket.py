@@ -1,5 +1,4 @@
 from enum import Enum
-from tracethread import Thread
 
 
 class SocketStatus(Enum):
@@ -14,7 +13,7 @@ class SocketElement():
                  destIp: str,
                  destPort: str,
                  socketStatus: SocketStatus,
-                 srcThread: Thread,
+                 srcThread,
                  sockCookie: str = None,
                  dataLen: int = None):
         self.srcIp: str = srcIp
@@ -22,6 +21,6 @@ class SocketElement():
         self.destIp: str = destIp
         self.destPort: str = destPort
         self.socketStatus: SocketStatus = socketStatus
-        self.srcThread: Thread = srcThread
+        self.srcThread = srcThread
         self.sockCookie: str = sockCookie
         self.dataLen: int = dataLen

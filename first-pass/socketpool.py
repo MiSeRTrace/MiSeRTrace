@@ -1,5 +1,4 @@
 from tracesocket import *
-from tracethread import Thread
 
 
 class SocketPool():
@@ -16,7 +15,7 @@ class SocketPool():
         return False
 
     def updateSocket(self, socketElement: SocketElement,
-                     socketStatus: SocketStatus, srcThread: Thread):
+                     socketStatus: SocketStatus, srcThread):
         key = (socketElement.srcIp, socketElement.srcPort,
                socketElement.destIp, socketElement.destPort)
         if key in self.socketPool:

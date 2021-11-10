@@ -1,11 +1,8 @@
-from tracethread import Thread
-
-
 class ThreadState():
-    def __init__(self, srcThread: Thread, handlingThread: Thread, traceID: int,
+    def __init__(self, srcThread, handlingThread, traceID: int,
                  startTimeStamp: float):
-        self.srcThread: Thread = srcThread
-        self.handlingThread: Thread = handlingThread
+        self.srcThread = srcThread
+        self.handlingThread = handlingThread
         self.traceID: int = traceID
         self.startTimeStamp: float = startTimeStamp
         self.endTimeStamp: float = startTimeStamp  # remember to update accordingly
@@ -19,8 +16,8 @@ class ForkThreadState(ThreadState):
 
 
 class NetworkThreadState(ThreadState):
-    def __init__(self, srcThread: Thread, handlingThread: Thread, traceID: int,
-                 srcIP: str, srcPort: str, startTimeStamp: float):
+    def __init__(self, srcThread, handlingThread, traceID: int, srcIP: str,
+                 srcPort: str, startTimeStamp: float):
         super(NetworkThreadState, self).__init__(srcThread, handlingThread,
                                                  traceID, startTimeStamp)
         self.srcIP: str = srcIP

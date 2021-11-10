@@ -1,9 +1,8 @@
 from tracethread import *
-# TODO - Thread is dead on a sched_switch with Z or X
 
 
 class ThreadPool():
-    def __init__(self, traceProcessor: TraceProcessor):
+    def __init__(self, traceProcessor):
         self.activeThreadPool = dict()  # key is PID, value is a Thread object
         self.deadThreadPool = list()  # contains Dead Thread objects
         self.traceProcessor = traceProcessor
@@ -31,6 +30,7 @@ class ThreadPool():
             if dyingThread:
                 dyingThread.setCurrentSchedState(record.timeStamp,
                                                  ThreadWakeState.EXIT_ZOMBIE)
+                # EXIT_DEAD occours once, on redis-server
                 self.killThread(dyingThread)
             else:
                 print(
@@ -42,6 +42,8 @@ class ThreadPool():
         elif record.event == 'sched_process_fork':
             parentThread: Thread = self.getThread(
                 int(record.details['parent_pid']))
+            # print(parentThread)
+            # print(record.timeStamp)
             if parentThread:
                 newThread = Thread(
                     int(record.details['child_pid']), parentThread.container,

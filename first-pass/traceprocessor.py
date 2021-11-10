@@ -11,13 +11,14 @@ class TraceProcessor():
         self.threadPool: ThreadPool = ThreadPool(self)
         self.traceID = 0
         self.gatewayIP = ",".join(
-            [str(hex(int(i)))[2:] for i in gatewayIP.split(".")])
+            [str(hex(int(i)))[2:].zfill(2) for i in gatewayIP.split(".")])
         # self.globalStateManager: GlobalStateManager = GlobalStateManager(
         #     gsClasses=gsClasses)
         with open(pathToPIDListFile, "r") as initialThreads:
             for line in initialThreads.readlines():
                 pid, container, _ = line.strip().split()
                 pid = int(pid)
+                # print(pid)
                 self.threadPool.addThread(
                     Thread(pid, container, self,
                            ThreadSchedState(0, ThreadWakeState.WAKING)))

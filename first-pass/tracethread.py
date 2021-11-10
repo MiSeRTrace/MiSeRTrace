@@ -1,6 +1,5 @@
 from enum import Enum
 from tracerecord import *
-from traceprocessor import TraceProcessor
 from threadstate import ForkThreadState, NetworkThreadState
 from tracesocket import SocketElement, SocketStatus
 
@@ -53,7 +52,7 @@ class Thread():
     def __init__(self,
                  pid: int,
                  container: str,
-                 traceProcessor: TraceProcessor,
+                 traceProcessor,
                  currentSchedState: ThreadSchedState = ThreadSchedState()):
         self.pid = pid
         self.container = container
@@ -92,6 +91,7 @@ class Thread():
            Requestor State Store (Append only log per key (appened by the recipient only)
            Key:Value of TraceID:State Object(STTIP, attributes)
         """
+        self.tcpState = None
 
     def setCurrentSchedState(
             self,
@@ -114,7 +114,14 @@ class Thread():
         networkThreadState.srcThread.addDestinationReference(
             networkThreadState.traceID, networkThreadState)
 
+    def addNetworkThreadStateWithoutDestinationReference(
+            self, networkThreadState: NetworkThreadState, source):
+        self.networkThreadStates[source] = networkThreadState
+
     def addDestinationReference(self, traceID: int, destinationReference):
+        # print(traceID)
+        if traceID not in self.destinationThreadStates:
+            self.destinationThreadStates[traceID] = list()
         self.destinationThreadStates[traceID].append(destinationReference)
 
     def consumeRecord(self, record: TraceRecord):
@@ -128,9 +135,9 @@ class Thread():
         if record.event == "sys_enter_sendto":
             self.tcpState = SendSyscallState()
 
-        if type(self.tcpState) == SendSyscallState:
+        if self.tcpState and type(self.tcpState) == SendSyscallState:
             if record.event == "inet_sock_set_state":
-                self.tcpState.inetSockSetStateObserved()
+                self.tcpState.isInetSockSetStateObserved()
 
             if record.event == "tcp_probe":
                 # Updating Socket Cookie for the second tcp_probe
@@ -158,8 +165,8 @@ class Thread():
                 #         exit()
 
                 if not self.tcpState.isInetSockSetStateObserved(
-                ) and not self.tcpState.tcpProbeObserved():
-                    self.tcpState.tcpProbeObserved()
+                ) and not self.tcpState.isTcpProbeObserved():
+                    self.tcpState.isTcpProbeObserved()
                     # Identify if request or response
                     isRequest = True
                     for networkState in self.networkThreadStates:
@@ -249,13 +256,18 @@ class Thread():
             isRequest = None
             if record.event == "tcp_rcv_space_adjust":
                 # Check if Frontend container
-                if record.details["saddr"] == self.traceProcessor.gatewayIP:
-                    traceID = TraceProcessor.nextTraceID()
+                # print(record.details["daddr"])
+                # print(self.traceProcessor.gatewayIP)
+                # print(record.timeStamp)
+                if record.details["daddr"] == self.traceProcessor.gatewayIP:
+                    traceID = self.traceProcessor.nextTraceID()
                     sourcePort = record.details["dport"]
                     networkThreadState = NetworkThreadState(
                         None, self, traceID, self.traceProcessor.gatewayIP,
                         sourcePort, record.timeStamp)
-                    self.addNetworkThreadState(networkThreadState)
+                    # No reference to source thread as the source thread is docker gateway
+                    self.addNetworkThreadStateWithoutDestinationReference(
+                        networkThreadState, (None, traceID))
                 else:
                     sourceIP = record.details["daddr"]
                     sourcePort = record.details["dport"]
@@ -264,12 +276,14 @@ class Thread():
                     sourceSocket = self.traceProcessor.socketPool.getSocket(
                         sourceIP, sourcePort, destinationIP, destinationPort)
                     sourceThread = sourceSocket.srcThread
+
                     isRequest = False
                     if sourceSocket.socketStatus == SocketStatus.REQUEST:
                         isRequest = True
 
                     if isRequest:
                         incomingRequestTraces = list()
+                        print(record.timeStamp)
                         for networkStateKey in sourceThread.networkThreadStates:
                             incomingRequestTraces.append(networkStateKey[1])
 
@@ -312,7 +326,9 @@ class Thread():
                                 networkThreadState = NetworkThreadState(
                                     sourceThread, self, traceID, sourceIP,
                                     sourcePort, record.timeStamp)
-                                self.addNetworkThreadState(networkThreadState)
+                                self.addNetworkThreadState(
+                                    networkThreadState,
+                                    (sourceThread, traceID))
 
                         # Create a child state for each (fork thread state in the parent)
                         for forkState in sourceThread.forkThreadStates:
@@ -323,9 +339,11 @@ class Thread():
                                     sourceThread, forkTraceID
                                 ) not in self.intermediateThreadStates:
                                 networkThreadState = NetworkThreadState(
-                                    sourceThread, self, traceID, sourceIP,
+                                    sourceThread, self, forkTraceID, sourceIP,
                                     sourcePort, record.timeStamp)
-                                self.addNetworkThreadState(networkThreadState)
+                                self.addNetworkThreadState(
+                                    networkThreadState,
+                                    (sourceThread, forkTraceID))
 
             elif record.event == "sys_exit_recvfrom":
                 del (self.tcpState)
