@@ -9,6 +9,8 @@ class ThreadPool():
 
     def processSchedEvents(self, record: TraceRecord):
         #print(len(self.activeThreadPool))
+        if "sched_process_fork" in record.event:
+            print(record.details)
 
         # sched_switch event: Changes the wake state of a thread
         if record.event == 'sched_switch':
@@ -30,11 +32,11 @@ class ThreadPool():
             if dyingThread:
                 dyingThread.setCurrentSchedState(record.timeStamp,
                                                  ThreadWakeState.EXIT_ZOMBIE)
-                # EXIT_DEAD occours once, on redis-server
+                # EXIT_DEAD occurs once, on redis-server
                 self.killThread(dyingThread)
             else:
                 print(
-                    f"Thread {record.pid} not in active pool, cannot be moved to dead pool"
+                    f"ERROR: Thread {record.pid} not in active pool, cannot be moved to dead pool"
                 )
                 exit()
 
@@ -49,9 +51,11 @@ class ThreadPool():
                     int(record.details['child_pid']), parentThread.container,
                     self.traceProcessor,
                     ThreadSchedState(record.timeStamp, ThreadWakeState.WAKING))
+                # print(newThread.container)
+                # print(record.timeStamp)
                 if not self.addThread(newThread):
                     print(
-                        f"Thread could not be added into the pool\nDuplicate PID {record.details['child_pid']}"
+                        f"ERROR: Thread could not be added into the pool\nDuplicate PID {record.details['child_pid']}"
                     )
                     exit()
                 """
@@ -81,7 +85,9 @@ class ThreadPool():
                                                       record.timeStamp)
                     newThread.addForkThreadState(forkThreadState)
             else:
-                print("Parent thread not in active thread pool while forking")
+                print(
+                    "ERROR: Parent thread not in active thread pool while forking"
+                )
                 exit()
 
     def freeActiveThreadPool(self):
