@@ -129,7 +129,9 @@ class Thread():
         Clear socket after use
         Network state based on fork
         """
-        if record.event == "sys_enter_sendto":
+        if record.event in [
+                "sys_enter_sendto", "sys_enter_write", "sys_enter_sendmsg"
+        ]:
             self.tcpState = SendSyscallState()
 
         if type(self.tcpState) == SendSyscallState:
@@ -241,12 +243,16 @@ class Thread():
                             for networkStateKey in threadStateToPop:
                                 self.networkThreadStates.pop(networkState)
 
-            elif record.event == "sys_exit_sendto":
+            elif record.event in [
+                    "sys_exit_sendto", "sys_exit_write", "sys_exit_sendmsg"
+            ]:
                 del (self.tcpState)
                 self.tcpState = None
 
         # RECEIVING LOGIC
-        if record.event == "sys_enter_recvfrom":
+        if record.event in [
+                "sys_enter_recvfrom", "sys_enter_read", "sys_enter_recvmsg"
+        ]:
             self.tcpState = RecvSyscallState()
 
         if type(self.tcpState) == RecvSyscallState:
@@ -278,8 +284,9 @@ class Thread():
                     destinationPort = record.details["sport"]
                     sourceSocket = self.traceProcessor.socketPool.getSocket(
                         sourceIP, sourcePort, destinationIP, destinationPort)
-                    print("JUST IN CASE", self.container, record.pid, sourceIP,
-                          sourcePort, destinationIP, destinationPort)
+                    print("JUST IN CASE", self.container, record.pid,
+                          record.timeStamp, sourceIP, sourcePort,
+                          destinationIP, destinationPort)
                     sourceThread = sourceSocket.srcThread
 
                     isRequest = False
@@ -357,6 +364,8 @@ class Thread():
                                     networkThreadState,
                                     (sourceThread, forkTraceID))
 
-            elif record.event == "sys_exit_recvfrom":
+            elif record.event in [
+                    "sys_exit_recvfrom", "sys_exit_read", "sys_exit_recvmsg"
+            ]:
                 del (self.tcpState)
                 self.tcpState = None
