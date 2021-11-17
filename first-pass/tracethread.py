@@ -112,8 +112,8 @@ class Thread():
         networkThreadState.srcThread.addDestinationReference(
             networkThreadState.traceID, networkThreadState)
 
-    def addNetworkThreadStateWithoutAddingDestinationReference(
-            self, networkThreadState: NetworkThreadState, key):
+    def addRootNetworkThreadState(self, networkThreadState: NetworkThreadState,
+                                  key, traceProcessor):
         self.networkThreadStates[key] = networkThreadState
 
     def addDestinationReference(self, traceID: int, destinationReference):
@@ -137,16 +137,55 @@ class Thread():
         if type(self.tcpState) == SendSyscallState:
             if record.event == "inet_sock_set_state":
                 self.tcpState.setInetSockSetStateObserved()
+                """
+                Sometimes, the packet is sent through when a TCP connection is established using "inet_sock_set_state"
+                "tcp_probe" event is not observed.
+                Hence, whenever a new TCP connection is established, we create/set the socket state as request. 
+                """
+                if record.details["newstate"] == '1':
+                    destinationIP = record.details["saddr"]
+                    destinationPort = record.details["sport"]
+                    sourceIP = record.details["daddr"]
+                    sourcePort = record.details["dport"]
+                    senderSock = self.traceProcessor.socketPool.getSocket(
+                        sourceIP, sourcePort, destinationIP, destinationPort)
+                    if not senderSock:
+                        print("Sender add sock - sender sock", sourceIP,
+                              sourcePort, destinationIP, destinationPort)
+                        self.traceProcessor.socketPool.addSocket(
+                            SocketElement(sourceIP, sourcePort, destinationIP,
+                                          destinationPort,
+                                          SocketStatus.REQUEST, self))
+                    else:
+                        self.traceProcessor.socketPool.updateSocket(
+                            senderSock, SocketStatus.REQUEST, self)
+                    receiverSock = self.traceProcessor.socketPool.getSocket(
+                            destinationIP, destinationPort, sourceIP,
+                            sourcePort)
+                    print("Sender get sock - receiver sock", destinationIP,
+                            destinationPort, sourceIP, sourcePort)
+                    if not receiverSock:
+                        print("Sender add sock - receiver sock",
+                                destinationIP, destinationPort, sourceIP,
+                                sourcePort)
+                        self.traceProcessor.socketPool.addSocket(
+                            SocketElement(destinationIP, destinationPort,
+                                            sourceIP, sourcePort,
+                                            SocketStatus.RESPONSE, None))
+                    else:
+                        self.traceProcessor.socketPool.updateSocket(
+                            receiverSock, SocketStatus.RESPONSE, None)
 
             elif record.event == "tcp_probe":
                 # Updating Socket Cookie for the second tcp_probe
-                destinationIP = record.details["saddr"]
-                destinationPort = record.details["sport"]
-                sourceIP = record.details["daddr"]
-                sourcePort = record.details["dport"]
-
                 if not self.tcpState.isInetSockSetStateObserved(
                 ) and not self.tcpState.isTcpProbeObserved():
+
+                    destinationIP = record.details["saddr"]
+                    destinationPort = record.details["sport"]
+                    sourceIP = record.details["daddr"]
+                    sourcePort = record.details["dport"]
+
                     self.tcpState.setTcpProbeObserved()
 
                     senderSock = self.traceProcessor.socketPool.getSocket(
@@ -270,14 +309,13 @@ class Thread():
                         None, self, traceID, self.traceProcessor.gatewayIP,
                         sourcePort, record.timeStamp)
                     # No reference to source thread as the source thread is docker gateway
-                    self.addNetworkThreadStateWithoutAddingDestinationReference(
-                        networkThreadState, (None, traceID))
+                    self.addRootNetworkThreadState(networkThreadState,
+                                                   (None, traceID),self.traceProcessor)
                     print(
                         f"{self.container, record.pid} receiving request at time {record.timeStamp} from {record.details['daddr']}"
                     )
                     print("------------------------")
                 else:
-
                     sourceIP = record.details["daddr"]
                     sourcePort = record.details["dport"]
                     destinationIP = record.details["saddr"]
@@ -294,7 +332,6 @@ class Thread():
                         isRequest = True
 
                     if isRequest:
-
                         incomingRequestTraces = list()
                         # print(record.timeStamp)
                         print(

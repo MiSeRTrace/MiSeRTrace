@@ -18,7 +18,7 @@ class TraceRecord():
                 print("Potential error in trace record parsing")
                 exit()
 
-        if self.event == "tcp_rcv_space_adjust" or self.event == "tcp_probe":
+        if self.event in ("tcp_rcv_space_adjust","tcp_probe","inet_sock_set_state"):
             self.details["saddr"] = self.extractAddr("saddr")
             self.details["daddr"] = self.extractAddr("daddr")
 
