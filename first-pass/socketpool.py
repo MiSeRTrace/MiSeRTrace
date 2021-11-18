@@ -1,23 +1,32 @@
 from tracesocket import *
 
 
-class SocketPool():
+class SocketPool:
     def __init__(self):
         # key is a tuple of srcIp, srcPort,destIp, destPort
         self.socketPool: dict[tuple, SocketElement] = dict()
 
     def addSocket(self, socketElement: SocketElement):
-        key = (socketElement.srcIp, socketElement.srcPort,
-               socketElement.destIp, socketElement.destPort)
+        key = (
+            socketElement.srcIp,
+            socketElement.srcPort,
+            socketElement.destIp,
+            socketElement.destPort,
+        )
         if key not in self.socketPool:
             self.socketPool[key] = socketElement
             return True
         return False
 
-    def updateSocket(self, socketElement: SocketElement,
-                     socketStatus: SocketStatus, srcThread):
-        key = (socketElement.srcIp, socketElement.srcPort,
-               socketElement.destIp, socketElement.destPort)
+    def updateSocket(
+        self, socketElement: SocketElement, socketStatus: SocketStatus, srcThread
+    ):
+        key = (
+            socketElement.srcIp,
+            socketElement.srcPort,
+            socketElement.destIp,
+            socketElement.destPort,
+        )
         if key in self.socketPool:
             self.socketPool[key].socketStatus = socketStatus
             self.socketPool[key].srcThread = srcThread

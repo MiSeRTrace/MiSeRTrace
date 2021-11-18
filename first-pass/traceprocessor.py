@@ -5,14 +5,15 @@ from tracethread import Thread
 from globalstatemanager import GlobalStateManager
 
 
-class TraceProcessor():
+class TraceProcessor:
     def __init__(self, pathToPIDListFile: str, gatewayIP: str):
         self.socketPool: SocketPool = SocketPool()
         self.threadPool: ThreadPool = ThreadPool(self)
         self.traceID = 0
         self.traceDestinationReference = dict()
         self.gatewayIP = ",".join(
-            [str(hex(int(i)))[2:].zfill(2) for i in gatewayIP.split(".")])
+            [str(hex(int(i)))[2:].zfill(2) for i in gatewayIP.split(".")]
+        )
         # self.globalStateManager: GlobalStateManager = GlobalStateManager(
         #     gsClasses=gsClasses)
         with open(pathToPIDListFile, "r") as initialThreads:
@@ -21,8 +22,13 @@ class TraceProcessor():
                 pid = int(pid)
                 # print(pid)
                 self.threadPool.addThread(
-                    Thread(pid, container, self,
-                           ThreadSchedState(0, ThreadWakeState.WAKING)))
+                    Thread(
+                        pid,
+                        container,
+                        self,
+                        ThreadSchedState(0, ThreadWakeState.WAKING),
+                    )
+                )
 
     def addTraceDestinationReference(self, traceID, destinationReference):
         if traceID not in self.traceDestinationReference:
@@ -33,7 +39,7 @@ class TraceProcessor():
     def consumeRecord(self, record: TraceRecord):
         if not self._validRecord(record):
             return False
-        if 'sched' in record.event:
+        if "sched" in record.event:
             self.threadPool.processSchedEvents(record)
         else:
             self.processEvents(record)

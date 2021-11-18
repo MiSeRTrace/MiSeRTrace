@@ -1,7 +1,7 @@
 from tracerecord import TraceRecord
 
 
-class GlobalStateInterface():
+class GlobalStateInterface:
 
     ID: str
 
@@ -12,7 +12,7 @@ class GlobalStateInterface():
         pass
 
 
-class GlobalStateManager():
+class GlobalStateManager:
     def __init__(self, gsClasses: list):
         self.GlobalStateStore: dict[str, GlobalStateInterface] = dict()
         for cls in gsClasses:
@@ -24,8 +24,7 @@ class GlobalStateManager():
 
     def retrieveAllData(self):
         return {
-            self.GlobalStateStore[id]:
-            self.GlobalStateStore[id].retrieveData()
+            self.GlobalStateStore[id]: self.GlobalStateStore[id].retrieveData()
             for object in self.GlobalStateStore
         }
 

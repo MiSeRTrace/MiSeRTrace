@@ -1,35 +1,35 @@
 from tracethread import *
 
 
-class ThreadPool():
+class ThreadPool:
     def __init__(self, traceProcessor):
         self.activeThreadPool = dict()  # key is PID, value is a Thread object
         self.deadThreadPool = list()  # contains Dead Thread objects
         self.traceProcessor = traceProcessor
 
     def processSchedEvents(self, record: TraceRecord):
-        #print(len(self.activeThreadPool))
+        # print(len(self.activeThreadPool))
 
         # sched_switch event: Changes the wake state of a thread
-        if record.event == 'sched_switch':
-            prevThread: Thread = self.getThread(int(
-                record.details['prev_pid']))
-            nextThread: Thread = self.getThread(int(
-                record.details['next_pid']))
+        if record.event == "sched_switch":
+            prevThread: Thread = self.getThread(int(record.details["prev_pid"]))
+            nextThread: Thread = self.getThread(int(record.details["next_pid"]))
             if prevThread:
                 prevThread.setCurrentSchedState(
-                    record.timeStamp,
-                    ThreadWakeState(int(record.details["prev_state"])))
+                    record.timeStamp, ThreadWakeState(int(record.details["prev_state"]))
+                )
             if nextThread:
-                nextThread.setCurrentSchedState(record.timeStamp,
-                                                ThreadWakeState.RUNNING)
+                nextThread.setCurrentSchedState(
+                    record.timeStamp, ThreadWakeState.RUNNING
+                )
 
         # sched_process_exit: Event observed when a thread dies
-        elif record.event == 'sched_process_exit':
+        elif record.event == "sched_process_exit":
             dyingThread: Thread = self.getThread(record.pid)
             if dyingThread:
-                dyingThread.setCurrentSchedState(record.timeStamp,
-                                                 ThreadWakeState.EXIT_ZOMBIE)
+                dyingThread.setCurrentSchedState(
+                    record.timeStamp, ThreadWakeState.EXIT_ZOMBIE
+                )
                 # EXIT_DEAD occurs once, on redis-server
                 self.killThread(dyingThread)
             else:
@@ -39,19 +39,25 @@ class ThreadPool():
                 exit()
 
         # sched_process_fork: Event observed when a thread forks
-        elif record.event == 'sched_process_fork':
-            print("\033[95m", record.details["parent_comm"],
-                  "forked with Parent PID:", record.details["parent_pid"],
-                  "Child PID:", record.details["child_pid"])
-            parentThread: Thread = self.getThread(
-                int(record.details['parent_pid']))
+        elif record.event == "sched_process_fork":
+            print(
+                "\033[95m",
+                record.details["parent_comm"],
+                "forked with Parent PID:",
+                record.details["parent_pid"],
+                "Child PID:",
+                record.details["child_pid"],
+            )
+            parentThread: Thread = self.getThread(int(record.details["parent_pid"]))
             # print(parentThread)
             # print(record.timeStamp)
             if parentThread:
                 newThread = Thread(
-                    int(record.details['child_pid']), parentThread.container,
+                    int(record.details["child_pid"]),
+                    parentThread.container,
                     self.traceProcessor,
-                    ThreadSchedState(record.timeStamp, ThreadWakeState.WAKING))
+                    ThreadSchedState(record.timeStamp, ThreadWakeState.WAKING),
+                )
                 # print(newThread.container)
                 # print(record.timeStamp)
                 if not self.addThread(newThread):
@@ -75,20 +81,18 @@ class ThreadPool():
                 """
                 for parentForkState in parentThread.forkThreadStates:
                     parentTraceID = parentForkState.traceID
-                    forkThreadState = ForkThreadState(parentThread, newThread,
-                                                      parentTraceID,
-                                                      record.timeStamp)
+                    forkThreadState = ForkThreadState(
+                        parentThread, newThread, parentTraceID, record.timeStamp
+                    )
                     newThread.addForkThreadState(forkThreadState)
                 for key in parentThread.networkThreadStates:
                     parentTraceID = key[1]
-                    forkThreadState = ForkThreadState(parentThread, newThread,
-                                                      parentTraceID,
-                                                      record.timeStamp)
+                    forkThreadState = ForkThreadState(
+                        parentThread, newThread, parentTraceID, record.timeStamp
+                    )
                     newThread.addForkThreadState(forkThreadState)
             else:
-                print(
-                    "ERROR: Parent thread not in active thread pool while forking"
-                )
+                print("ERROR: Parent thread not in active thread pool while forking")
                 exit()
 
     def freeActiveThreadPool(self):
@@ -108,7 +112,8 @@ class ThreadPool():
         if thread.pid in self.activeThreadPool:
             for key in thread.intermediateThreadStates:
                 thread.networkThreadStateLog.append(
-                    thread.intermediateThreadStates.pop(key))
+                    thread.intermediateThreadStates.pop(key)
+                )
             self.deadThreadPool.append(self.activeThreadPool.pop(thread.pid))
             return True
         return False

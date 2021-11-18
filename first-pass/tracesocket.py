@@ -6,16 +6,18 @@ class SocketStatus(Enum):
     RESPONSE = 1
 
 
-class SocketElement():
-    def __init__(self,
-                 srcIp: str,
-                 srcPort: str,
-                 destIp: str,
-                 destPort: str,
-                 socketStatus: SocketStatus,
-                 srcThread,
-                 sockCookie: str = None,
-                 dataLen: int = None):
+class SocketElement:
+    def __init__(
+        self,
+        srcIp: str,
+        srcPort: str,
+        destIp: str,
+        destPort: str,
+        socketStatus: SocketStatus,
+        srcThread,
+        sockCookie: str = None,
+        dataLen: int = None,
+    ):
         self.srcIp: str = srcIp
         self.srcPort: str = srcPort
         self.destIp: str = destIp

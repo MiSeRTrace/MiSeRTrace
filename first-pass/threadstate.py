@@ -1,6 +1,5 @@
-class ThreadState():
-    def __init__(self, srcThread, handlingThread, traceID: int,
-                 startTimeStamp: float):
+class ThreadState:
+    def __init__(self, srcThread, handlingThread, traceID: int, startTimeStamp: float):
         self.srcThread = srcThread
         self.handlingThread = handlingThread
         self.traceID: int = traceID
@@ -16,10 +15,18 @@ class ForkThreadState(ThreadState):
 
 
 class NetworkThreadState(ThreadState):
-    def __init__(self, srcThread, handlingThread, traceID: int, srcIP: str,
-                 srcPort: str, startTimeStamp: float):
-        super(NetworkThreadState, self).__init__(srcThread, handlingThread,
-                                                 traceID, startTimeStamp)
+    def __init__(
+        self,
+        srcThread,
+        handlingThread,
+        traceID: int,
+        srcIP: str,
+        srcPort: str,
+        startTimeStamp: float,
+    ):
+        super(NetworkThreadState, self).__init__(
+            srcThread, handlingThread, traceID, startTimeStamp
+        )
         self.srcIP: str = srcIP
         self.srcPort: str = srcPort
         self.responseSentOnce: bool = False
