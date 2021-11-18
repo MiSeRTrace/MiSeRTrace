@@ -25,8 +25,8 @@ class bcolors:
     ENDC = '\033[0m'
     BOLD = '\033[1m'
     UNDERLINE = '\033[4m'
-    GETSOCK = '\033[38;5;0m'
-    ADDSOCK = '\033[38;5;0m'
+    GETSOCK = '\033[38;5;175m'
+    ADDSOCK = '\033[38;5;175m'
 
 
 class ThreadSchedState():
@@ -132,32 +132,26 @@ class Thread():
         self.destinationThreadStates[traceID].append(destinationReference)
 
     def addRootNetworkThreadState(self, networkThreadState: NetworkThreadState,
-                                  key, traceProcessor):
+                                  key):
         self.networkThreadStates[key] = networkThreadState
-        traceProcessor.addTraceDestinationReference(networkThreadState.traceID,
-                                                    networkThreadState)
+        self.traceProcessor.addTraceDestinationReference(
+            networkThreadState.traceID, networkThreadState)
 
     def consumeRecord(self, record: TraceRecord):
-        """
-        destroy sock
-        Sender side create both sockets
-        tcp_probe for both req and ack - check if this happens always
-        Clear socket after use
-        Network state based on fork
-        """
         if record.event in [
-                "sys_enter_sendto", "sys_enter_write", "sys_enter_sendmsg"
+                "sys_enter_sendto", "sys_enter_write", "sys_enter_sendmsg",
+                "sys_enter_writev"
         ]:
             self.tcpState = SendSyscallState()
 
         elif type(self.tcpState) == SendSyscallState:
             if record.event == "inet_sock_set_state":
                 self.tcpState.setInetSockSetStateObserved()
-                """
-                Sometimes, the packet is sent through when a TCP connection is established using "inet_sock_set_state"
-                "tcp_probe" event is not observed.
-                Hence, whenever a new TCP connection is established, we create/set the socket state as request. 
-                """
+
+                # Sometimes, the packet is sent through when a TCP connection is established using "inet_sock_set_state"
+                # "tcp_probe" event is not observed.
+                # Hence, whenever a new TCP connection is established, we create/set the socket state as request.
+
                 if record.details["newstate"] == '1':
                     destinationIP = record.details["saddr"]
                     destinationPort = record.details["sport"]
@@ -195,7 +189,6 @@ class Thread():
                             receiverSock, SocketStatus.RESPONSE, None)
 
             elif record.event == "tcp_probe":
-                # Updating Socket Cookie for the second tcp_probe
                 if not self.tcpState.isInetSockSetStateObserved(
                 ) and not self.tcpState.isTcpProbeObserved():
 
@@ -205,110 +198,135 @@ class Thread():
                     sourcePort = record.details["dport"]
 
                     self.tcpState.setTcpProbeObserved()
-
-                    senderSock = self.traceProcessor.socketPool.getSocket(
-                        sourceIP, sourcePort, destinationIP, destinationPort)
-
-                    # Identify if request or response
-                    isRequest = True
-                    for networkState in self.networkThreadStates:
-                        threadState = self.networkThreadStates[networkState]
-                        if threadState.srcIP == destinationIP and threadState.srcPort == destinationPort:
-                            isRequest = False
-                    if isRequest:
-                        print(
-                            f"{bcolors.BOLD}{bcolors.BLUE}{self.container}@{record.pid}{bcolors.ENDC}{bcolors.BOLD}{bcolors.GREEN} sending request{bcolors.ENDC} at time {record.timeStamp}{bcolors.RED} from {sourceIP, sourcePort}{bcolors.YELLOW} to {destinationIP, destinationPort}"
-                        )
-                        print(bcolors.GETSOCK, "Sender get sock - sender sock",
-                              sourceIP, sourcePort, destinationIP,
-                              destinationPort)
-                        if not senderSock:
-                            print(bcolors.ADDSOCK,
-                                  "Sender add sock - sender sock", sourceIP,
-                                  sourcePort, destinationIP, destinationPort)
-                            self.traceProcessor.socketPool.addSocket(
-                                SocketElement(sourceIP, sourcePort,
-                                              destinationIP, destinationPort,
-                                              SocketStatus.REQUEST, self))
-                        else:
-                            self.traceProcessor.socketPool.updateSocket(
-                                senderSock, SocketStatus.REQUEST, self)
-
-                        receiverSock = self.traceProcessor.socketPool.getSocket(
-                            destinationIP, destinationPort, sourceIP,
-                            sourcePort)
-                        print(bcolors.GETSOCK,
-                              "Sender get sock - receiver sock", destinationIP,
-                              destinationPort, sourceIP, sourcePort)
-                        if not receiverSock:
-                            print(bcolors.ADDSOCK,
-                                  "Sender add sock - receiver sock",
-                                  destinationIP, destinationPort, sourceIP,
-                                  sourcePort)
-                            self.traceProcessor.socketPool.addSocket(
-                                SocketElement(destinationIP, destinationPort,
-                                              sourceIP, sourcePort,
-                                              SocketStatus.RESPONSE, None))
-                        else:
-                            self.traceProcessor.socketPool.updateSocket(
-                                receiverSock, SocketStatus.RESPONSE, None)
-
-                        print(f"{bcolors.BOLD}---------------------------")
-
-                    # Case where the thread is sending a response
-                    else:
+                    if destinationIP == self.traceProcessor.gatewayIP:
+                        for key in list(
+                                filter(lambda key: key[0] == None,
+                                       self.networkThreadStates.keys())):
+                            self.intermediateThreadStates[
+                                key] = self.networkThreadStates.pop(key)
+                        for key in list(
+                                filter(lambda key: key[0] == None,
+                                       self.intermediateThreadStates.keys())):
+                            self.intermediateThreadStates[key].updateEndTime(
+                                record.timeStamp)
                         print(
                             f"{bcolors.BOLD}{bcolors.BLUE}{self.container}@{record.pid}{bcolors.ENDC}{bcolors.BOLD}{bcolors.GREEN} sending response{bcolors.ENDC} at time {record.timeStamp}{bcolors.RED} from {sourceIP, sourcePort}{bcolors.YELLOW} to {destinationIP, destinationPort}"
                         )
+                    else:
                         senderSock = self.traceProcessor.socketPool.getSocket(
                             sourceIP, sourcePort, destinationIP,
                             destinationPort)
-                        if not senderSock:
-                            print(
-                                "ERROR: Socket to send response was not found")
-                            exit()
-                        else:
-                            # Add the thread object to the socket, update socket status to be a response
-                            self.traceProcessor.socketPool.updateSocket(
-                                senderSock, SocketStatus.RESPONSE, self)
-                            """
-                            Get the X object
-                                Opposite socket's source thread
-                            Use X object as key in the Y's network thread states
-                            Update boolean - response sent
-                            Update end time in current and intermediate stores
-                            Move to intermediate if another request has arrived
-                            """
 
-                            destinationSock = self.traceProcessor.socketPool.getSocket(
+                        # Identify if request or response
+                        isRequest = True
+                        for networkState in self.networkThreadStates:
+                            threadState = self.networkThreadStates[
+                                networkState]
+                            if threadState.srcIP == destinationIP and threadState.srcPort == destinationPort:
+                                isRequest = False
+                        if isRequest:
+                            print(
+                                f"{bcolors.BOLD}{bcolors.BLUE}{self.container}@{record.pid}{bcolors.ENDC}{bcolors.BOLD}{bcolors.GREEN} sending request{bcolors.ENDC} at time {record.timeStamp}{bcolors.RED} from {sourceIP, sourcePort}{bcolors.YELLOW} to {destinationIP, destinationPort}"
+                            )
+                            print(bcolors.GETSOCK,
+                                  "Sender get sock - sender sock", sourceIP,
+                                  sourcePort, destinationIP, destinationPort)
+                            if not senderSock:
+                                print(bcolors.ADDSOCK,
+                                      "Sender add sock - sender sock",
+                                      sourceIP, sourcePort, destinationIP,
+                                      destinationPort)
+                                self.traceProcessor.socketPool.addSocket(
+                                    SocketElement(sourceIP, sourcePort,
+                                                  destinationIP,
+                                                  destinationPort,
+                                                  SocketStatus.REQUEST, self))
+                            else:
+                                self.traceProcessor.socketPool.updateSocket(
+                                    senderSock, SocketStatus.REQUEST, self)
+
+                            receiverSock = self.traceProcessor.socketPool.getSocket(
                                 destinationIP, destinationPort, sourceIP,
                                 sourcePort)
-                            destinationThread = destinationSock.srcThread
+                            print(bcolors.GETSOCK,
+                                  "Sender get sock - receiver sock",
+                                  destinationIP, destinationPort, sourceIP,
+                                  sourcePort)
+                            if not receiverSock:
+                                print(bcolors.ADDSOCK,
+                                      "Sender add sock - receiver sock",
+                                      destinationIP, destinationPort, sourceIP,
+                                      sourcePort)
+                                self.traceProcessor.socketPool.addSocket(
+                                    SocketElement(destinationIP,
+                                                  destinationPort, sourceIP,
+                                                  sourcePort,
+                                                  SocketStatus.RESPONSE, None))
+                            else:
+                                self.traceProcessor.socketPool.updateSocket(
+                                    receiverSock, SocketStatus.RESPONSE, None)
 
-                            for networkStateKey in self.intermediateThreadStates:
-                                if networkStateKey[0] == destinationThread:
-                                    threadState = self.intermediateThreadStates[
-                                        networkStateKey]
-                                    threadState.updateEndTime(record.timeStamp)
+                            print(f"{bcolors.BOLD}---------------------------")
 
-                            threadStateToPop = list()
-                            for networkStateKey in self.networkThreadStates:
-                                if networkStateKey[0] == destinationThread:
-                                    threadState = self.networkThreadStates[
-                                        networkStateKey]
-                                    threadState.setResponseSentOnce()
-                                    threadState.updateEndTime(record.timeStamp)
-                                    if threadState.isNewSrcObserved(
-                                    ) and threadState.isResponseSentOnce():
-                                        self.intermediateThreadStates[
-                                            networkStateKey] = threadState
-                                        threadStateToPop.append(
-                                            networkStateKey)
-                            for networkStateKey in threadStateToPop:
-                                self.networkThreadStates.pop(networkState)
+                        # Case where the thread is sending a response
+                        else:
+                            print(
+                                f"{bcolors.BOLD}{bcolors.BLUE}{self.container}@{record.pid}{bcolors.ENDC}{bcolors.BOLD}{bcolors.GREEN} sending response{bcolors.ENDC} at time {record.timeStamp}{bcolors.RED} from {sourceIP, sourcePort}{bcolors.YELLOW} to {destinationIP, destinationPort}"
+                            )
+                            senderSock = self.traceProcessor.socketPool.getSocket(
+                                sourceIP, sourcePort, destinationIP,
+                                destinationPort)
+                            if not senderSock:
+                                print(record.timeStamp, record.command,
+                                      record.details)
+                                print(
+                                    "ERROR: Socket to send response was not found"
+                                )
+                                exit()
+                            else:
+                                # Add the thread object to the socket, update socket status to be a response
+                                self.traceProcessor.socketPool.updateSocket(
+                                    senderSock, SocketStatus.RESPONSE, self)
+
+                                # Get the X object
+                                #     Opposite socket's source thread
+                                # Use X object as key in the Y's network thread states
+                                # Update boolean - response sent
+                                # Update end time in current and intermediate stores
+                                # Move to intermediate if another request has arrived
+
+                                destinationSock = self.traceProcessor.socketPool.getSocket(
+                                    destinationIP, destinationPort, sourceIP,
+                                    sourcePort)
+                                destinationThread = destinationSock.srcThread
+
+                                for networkStateKey in self.intermediateThreadStates:
+                                    if networkStateKey[0] == destinationThread:
+                                        threadState = self.intermediateThreadStates[
+                                            networkStateKey]
+                                        threadState.updateEndTime(
+                                            record.timeStamp)
+
+                                threadStateToPop = list()
+                                for networkStateKey in self.networkThreadStates:
+                                    if networkStateKey[0] == destinationThread:
+                                        threadState = self.networkThreadStates[
+                                            networkStateKey]
+                                        threadState.setResponseSentOnce()
+                                        threadState.updateEndTime(
+                                            record.timeStamp)
+                                        if threadState.isNewSrcObserved(
+                                        ) and threadState.isResponseSentOnce():
+                                            self.intermediateThreadStates[
+                                                networkStateKey] = threadState
+                                            threadStateToPop.append(
+                                                networkStateKey)
+                                for networkStateKey in threadStateToPop:
+                                    self.networkThreadStates.pop(networkState)
 
             elif record.event in [
-                    "sys_exit_sendto", "sys_exit_write", "sys_exit_sendmsg"
+                    "sys_exit_sendto", "sys_exit_write", "sys_exit_sendmsg",
+                    "sys_exit_writev"
             ]:
                 del (self.tcpState)
                 self.tcpState = None
@@ -328,8 +346,13 @@ class Thread():
                 #TODO Reference to openresty state from traceprocessor
                 if record.details["daddr"] == self.traceProcessor.gatewayIP:
                     if not list(
-                            filter(lambda x: x[0] == None,
+                            filter(lambda key: key[0] == None,
                                    self.networkThreadStates.keys())):
+                        for key in list(
+                                filter(lambda key: key[0] == None,
+                                       self.intermediateThreadStates.keys())):
+                            self.networkThreadStateLog.append(
+                                self.intermediateThreadStates.pop(key))
                         traceID = self.traceProcessor.nextTraceID()
                         sourcePort = record.details["dport"]
                         networkThreadState = NetworkThreadState(
@@ -337,18 +360,24 @@ class Thread():
                             sourcePort, record.timeStamp)
                         # No reference to source thread as the source thread is docker gateway
                         self.addRootNetworkThreadState(networkThreadState,
-                                                       (None, traceID),
-                                                       self.traceProcessor)
+                                                       (None, traceID))
                         # f"{self.container}@{record.pid}  at time {record.timeStamp} from {}"
                         print(
                             f"{bcolors.BOLD}{bcolors.BLUE}{self.container}@{record.pid}{bcolors.ENDC}{bcolors.BOLD}{bcolors.GREEN} receiving request{bcolors.ENDC} at time {record.timeStamp}{bcolors.RED} from {record.details['daddr'], record.details['dport']}{bcolors.YELLOW} to {record.details['saddr'], record.details['sport']}"
                         )
                         print("------------------------")
                     else:
+                        activeNetworkThreadStateCount = 0
                         for key in self.networkThreadStates:
                             if key[0] == None:
+                                activeNetworkThreadStateCount += 1
                                 self.networkThreadStates[
                                     key].endTimeStamp = record.timeStamp
+                        if activeNetworkThreadStateCount > 1:
+                            print(
+                                "ERROR : More than one active network thread state in nginx thread"
+                            )
+                            exit()
                 else:
                     sourceIP = record.details["daddr"]
                     sourcePort = record.details["dport"]

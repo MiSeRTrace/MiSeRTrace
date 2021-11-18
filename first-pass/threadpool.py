@@ -93,7 +93,7 @@ class ThreadPool():
 
     def freeActiveThreadPool(self):
         for key in self.activeThreadPool:
-            self.deadThreadPool.append(self.activeThreadPool.pop(key))
+            self.killThread(self.activeThreadPool[key])
 
     def addThread(self, newThread: Thread):
         if newThread.pid not in self.activeThreadPool:
@@ -106,6 +106,9 @@ class ThreadPool():
 
     def killThread(self, thread: Thread):
         if thread.pid in self.activeThreadPool:
+            for key in self.intermediateThreadStates:
+                self.networkThreadStateLog.append(
+                    self.intermediateThreadStates.pop(key))
             self.deadThreadPool.append(self.activeThreadPool.pop(thread.pid))
             return True
         return False

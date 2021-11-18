@@ -27,11 +27,3 @@ class SocketPool():
     def getSocket(self, srcIp: str, srcPort: str, destIp: str, destPort: str):
         key = (srcIp, srcPort, destIp, destPort)
         return self.socketPool.get(key)
-
-    def deleteSocket(self, socketElement: SocketElement):
-        key = (socketElement.srcIp, socketElement.srcPort,
-               socketElement.destIp, socketElement.destPort)
-        if key in self.socketPool:
-            self.socketPool.pop(key)
-            return True
-        return False
