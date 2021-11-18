@@ -9,8 +9,6 @@ class ThreadPool():
 
     def processSchedEvents(self, record: TraceRecord):
         #print(len(self.activeThreadPool))
-        if "sched_process_fork" in record.event:
-            print(record.details)
 
         # sched_switch event: Changes the wake state of a thread
         if record.event == 'sched_switch':
@@ -42,6 +40,9 @@ class ThreadPool():
 
         # sched_process_fork: Event observed when a thread forks
         elif record.event == 'sched_process_fork':
+            print("\033[95m", record.details["parent_comm"],
+                  "forked with Parent PID:", record.details["parent_pid"],
+                  "Child PID:", record.details["child_pid"])
             parentThread: Thread = self.getThread(
                 int(record.details['parent_pid']))
             # print(parentThread)

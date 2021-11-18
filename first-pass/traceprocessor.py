@@ -24,9 +24,9 @@ class TraceProcessor():
                     Thread(pid, container, self,
                            ThreadSchedState(0, ThreadWakeState.WAKING)))
 
-    def addTraceDestinationReference(self, destinationReference,traceID):
+    def addTraceDestinationReference(self, traceID, destinationReference):
         if traceID not in self.traceDestinationReference:
-            self.traceDestinationReference[traceID]=destinationReference
+            self.traceDestinationReference[traceID] = destinationReference
             return True
         return False
 
