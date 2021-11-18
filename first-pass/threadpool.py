@@ -106,9 +106,9 @@ class ThreadPool():
 
     def killThread(self, thread: Thread):
         if thread.pid in self.activeThreadPool:
-            for key in self.intermediateThreadStates:
-                self.networkThreadStateLog.append(
-                    self.intermediateThreadStates.pop(key))
+            for key in thread.intermediateThreadStates:
+                thread.networkThreadStateLog.append(
+                    thread.intermediateThreadStates.pop(key))
             self.deadThreadPool.append(self.activeThreadPool.pop(thread.pid))
             return True
         return False
