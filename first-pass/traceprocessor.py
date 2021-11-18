@@ -57,3 +57,6 @@ class TraceProcessor:
     def nextTraceID(self):
         self.traceID += 1
         return self.traceID
+
+    def terminate(self):
+        self.threadPool.freeActiveThreadPool()

@@ -17,9 +17,13 @@ for line in sys.stdin:
     if printLines:
         print(lineNumber, end="")
         lineNumber += 1
+
     record = TraceRecord(line)
     if not traceProcessor.consumeRecord(record):
         print("Record Validation Failed")
         exit()
+
     if printLines:
         print("\n--------\n")
+
+traceProcessor.terminate()
