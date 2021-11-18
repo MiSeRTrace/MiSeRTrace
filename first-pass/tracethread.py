@@ -115,6 +115,8 @@ class Thread():
     def addRootNetworkThreadState(self, networkThreadState: NetworkThreadState,
                                   key, traceProcessor):
         self.networkThreadStates[key] = networkThreadState
+        traceProcessor.addTraceDestinationReference(networkThreadState,networkThreadState.traceID)
+
 
     def addDestinationReference(self, traceID: int, destinationReference):
         if traceID not in self.destinationThreadStates:
@@ -134,7 +136,7 @@ class Thread():
         ]:
             self.tcpState = SendSyscallState()
 
-        if type(self.tcpState) == SendSyscallState:
+        elif type(self.tcpState) == SendSyscallState:
             if record.event == "inet_sock_set_state":
                 self.tcpState.setInetSockSetStateObserved()
                 """
@@ -160,18 +162,16 @@ class Thread():
                         self.traceProcessor.socketPool.updateSocket(
                             senderSock, SocketStatus.REQUEST, self)
                     receiverSock = self.traceProcessor.socketPool.getSocket(
-                            destinationIP, destinationPort, sourceIP,
-                            sourcePort)
+                        destinationIP, destinationPort, sourceIP, sourcePort)
                     print("Sender get sock - receiver sock", destinationIP,
-                            destinationPort, sourceIP, sourcePort)
+                          destinationPort, sourceIP, sourcePort)
                     if not receiverSock:
-                        print("Sender add sock - receiver sock",
-                                destinationIP, destinationPort, sourceIP,
-                                sourcePort)
+                        print("Sender add sock - receiver sock", destinationIP,
+                              destinationPort, sourceIP, sourcePort)
                         self.traceProcessor.socketPool.addSocket(
                             SocketElement(destinationIP, destinationPort,
-                                            sourceIP, sourcePort,
-                                            SocketStatus.RESPONSE, None))
+                                          sourceIP, sourcePort,
+                                          SocketStatus.RESPONSE, None))
                     else:
                         self.traceProcessor.socketPool.updateSocket(
                             receiverSock, SocketStatus.RESPONSE, None)
@@ -262,7 +262,7 @@ class Thread():
 
                             for networkStateKey in self.intermediateThreadStates:
                                 if networkStateKey[0] == destinationThread:
-                                    threadState = self.networkThreadStates[
+                                    threadState = self.intermediateThreadStates[
                                         networkStateKey]
                                     threadState.updateEndTime(record.timeStamp)
 
@@ -289,13 +289,12 @@ class Thread():
                 self.tcpState = None
 
         # RECEIVING LOGIC
-        if record.event in [
+        elif record.event in [
                 "sys_enter_recvfrom", "sys_enter_read", "sys_enter_recvmsg"
         ]:
             self.tcpState = RecvSyscallState()
 
-        if type(self.tcpState) == RecvSyscallState:
-            isRequest = None
+        elif type(self.tcpState) == RecvSyscallState:
             if record.event == "tcp_rcv_space_adjust":
                 # Check if Frontend container
                 # print(record.details["daddr"])
@@ -310,7 +309,8 @@ class Thread():
                         sourcePort, record.timeStamp)
                     # No reference to source thread as the source thread is docker gateway
                     self.addRootNetworkThreadState(networkThreadState,
-                                                   (None, traceID),self.traceProcessor)
+                                                   (None, traceID),
+                                                   self.traceProcessor)
                     print(
                         f"{self.container, record.pid} receiving request at time {record.timeStamp} from {record.details['daddr']}"
                     )
@@ -364,7 +364,7 @@ class Thread():
                         # Move existing state to permanent log due to it incoming request being from same source
                         for networkStateKey in self.intermediateThreadStates:
                             sourceThreadToBeChecked = networkStateKey[0]
-                            netState = self.networkThreadStates[
+                            netState = self.intermediateThreadStates[
                                 networkStateKey]
                             if (sourceThread == sourceThreadToBeChecked and
                                     netState.traceID in incomingRequestTraces):

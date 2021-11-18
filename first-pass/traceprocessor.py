@@ -10,6 +10,7 @@ class TraceProcessor():
         self.socketPool: SocketPool = SocketPool()
         self.threadPool: ThreadPool = ThreadPool(self)
         self.traceID = 0
+        self.traceDestinationReference = dict()
         self.gatewayIP = ",".join(
             [str(hex(int(i)))[2:].zfill(2) for i in gatewayIP.split(".")])
         # self.globalStateManager: GlobalStateManager = GlobalStateManager(
@@ -22,6 +23,12 @@ class TraceProcessor():
                 self.threadPool.addThread(
                     Thread(pid, container, self,
                            ThreadSchedState(0, ThreadWakeState.WAKING)))
+
+    def addTraceDestinationReference(self, destinationReference,traceID):
+        if traceID not in self.traceDestinationReference:
+            self.traceDestinationReference[traceID]=destinationReference
+            return True
+        return False
 
     def consumeRecord(self, record: TraceRecord):
         if not self._validRecord(record):
