@@ -96,7 +96,7 @@ class ThreadPool:
                 exit()
 
     def freeActiveThreadPool(self):
-        for key in self.activeThreadPool:
+        for key in list(self.activeThreadPool):
             self.killThread(self.activeThreadPool[key])
 
     def addThread(self, newThread: Thread):
@@ -110,9 +110,9 @@ class ThreadPool:
 
     def killThread(self, thread: Thread):
         if thread.pid in self.activeThreadPool:
-            for key in thread.networkThreadStates:
+            for key in list(thread.networkThreadStates):
                 thread.networkThreadStateLog.append(thread.networkThreadStates.pop(key))
-            for key in thread.intermediateThreadStates:
+            for key in list(thread.intermediateThreadStates):
                 thread.networkThreadStateLog.append(
                     thread.intermediateThreadStates.pop(key)
                 )

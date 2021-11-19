@@ -27,3 +27,4 @@ for line in sys.stdin:
         print("\n--------\n")
 
 traceProcessor.terminate()
+print(len(traceProcessor.traceDestinationReference))
