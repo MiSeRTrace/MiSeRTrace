@@ -13,6 +13,12 @@ traceProcessor = TraceProcessor(pathToPIDListFile=sys.argv[1], gatewayIP=sys.arg
 printLines = "-l" in sys.argv
 lineNumber = 1
 
+verbose = "-v" in sys.argv
+if verbose:
+    traceProcessor.toPrint = True
+else:
+    traceProcessor.toPrint = False
+
 for line in sys.stdin:
     if printLines:
         print(lineNumber, end="")

@@ -32,6 +32,9 @@ class NetworkThreadState(ThreadState):
         self.responseSentOnce: bool = False
         self.newSrcObserved: bool = False
 
+    def __str__(self):
+        return f"Source: {self.srcIP}:{self.srcPort} with PID {self.srcThread.pid}, Trace ID: {self.traceID}, Start time: {self.startTimeStamp}"
+
     def setNewSrcObserved(self):
         self.newSrcObserved = True
 

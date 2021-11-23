@@ -40,14 +40,15 @@ class ThreadPool:
 
         # sched_process_fork: Event observed when a thread forks
         elif record.event == "sched_process_fork":
-            # print(
-            #     "\033[95m",
-            #     record.details["parent_comm"],
-            #     "forked with Parent PID:",
-            #     record.details["parent_pid"],
-            #     "Child PID:",
-            #     record.details["child_pid"],
-            # )
+            if self.traceProcessor.toPrint:
+                print(
+                    "\033[95m",
+                    record.details["parent_comm"],
+                    "forked with Parent PID:",
+                    record.details["parent_pid"],
+                    "Child PID:",
+                    record.details["child_pid"],
+                )
             parentThread: Thread = self.getThread(int(record.details["parent_pid"]))
             # print(parentThread)
             # print(record.timeStamp)

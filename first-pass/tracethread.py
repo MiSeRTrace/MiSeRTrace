@@ -187,26 +187,26 @@ class Thread:
                         self.traceProcessor.socketPool.updateSocket(
                             senderSock, SocketStatus.UNKNOWN, self
                         )
-                    # receiverSock = self.traceProcessor.socketPool.getSocket(
-                    #     destinationIP, destinationPort, sourceIP, sourcePort
-                    # )
+                    receiverSock = self.traceProcessor.socketPool.getSocket(
+                        destinationIP, destinationPort, sourceIP, sourcePort
+                    )
 
-                    # if not receiverSock:
+                    if not receiverSock:
 
-                    #     self.traceProcessor.socketPool.addSocket(
-                    #         SocketElement(
-                    #             destinationIP,
-                    #             destinationPort,
-                    #             sourceIP,
-                    #             sourcePort,
-                    #             SocketStatus.RESPONSE,
-                    #             None,
-                    #         )
-                    #     )
-                    # else:
-                    #     self.traceProcessor.socketPool.updateSocket(
-                    #         receiverSock, SocketStatus.RESPONSE, None
-                    #     )
+                        self.traceProcessor.socketPool.addSocket(
+                            SocketElement(
+                                destinationIP,
+                                destinationPort,
+                                sourceIP,
+                                sourcePort,
+                                SocketStatus.RESPONSE,
+                                None,
+                            )
+                        )
+                    else:
+                        self.traceProcessor.socketPool.updateSocket(
+                            receiverSock, SocketStatus.RESPONSE, None
+                        )
 
             elif record.event == "tcp_probe":
                 if (
@@ -242,9 +242,10 @@ class Thread:
                         #     self.intermediateThreadStates[key].updateEndTime(
                         #         record.timeStamp
                         #     )
-                        # print(
-                        #     f"{bcolors.BOLD}{bcolors.BLUE}{self.container}@{record.pid}{bcolors.ENDC}{bcolors.BOLD}{bcolors.GREEN} sending response{bcolors.ENDC} at time {record.timeStamp}{bcolors.RED} from {sourceIP, sourcePort}{bcolors.YELLOW} to {destinationIP, destinationPort}"
-                        # )
+                        if self.traceProcessor.toPrint:
+                            print(
+                                f"{bcolors.BOLD}{bcolors.BLUE}{self.container}@{record.pid}{bcolors.ENDC}{bcolors.BOLD}{bcolors.GREEN} sending response{bcolors.ENDC} at time {record.timeStamp}{bcolors.RED} from {sourceIP, sourcePort}{bcolors.YELLOW} to {destinationIP, destinationPort}"
+                            )
                     else:
                         senderSock = self.traceProcessor.socketPool.getSocket(
                             sourceIP, sourcePort, destinationIP, destinationPort
@@ -261,9 +262,11 @@ class Thread:
                                 isRequest = False
                                 break
                         if isRequest:
-                            # print(
-                            #     f"{bcolors.BOLD}{bcolors.BLUE}{self.container}@{record.pid}{bcolors.ENDC}{bcolors.BOLD}{bcolors.GREEN} sending request{bcolors.ENDC} at time {record.timeStamp}{bcolors.RED} from {sourceIP, sourcePort}{bcolors.YELLOW} to {destinationIP, destinationPort}"
-                            # )
+                            if self.traceProcessor.toPrint:
+                                print(
+                                    f"{bcolors.BOLD}{bcolors.BLUE}{self.container}@{record.pid}{bcolors.ENDC}{bcolors.BOLD}{bcolors.GREEN} sending request{bcolors.ENDC} at time {record.timeStamp}{bcolors.RED} from {sourceIP, sourcePort}{bcolors.YELLOW} to {destinationIP, destinationPort}"
+                                )
+
                             if not senderSock:
                                 self.traceProcessor.socketPool.addSocket(
                                     SocketElement(
@@ -280,40 +283,45 @@ class Thread:
                                     senderSock, SocketStatus.REQUEST, self
                                 )
 
-                            # receiverSock = self.traceProcessor.socketPool.getSocket(
-                            #     destinationIP, destinationPort, sourceIP, sourcePort
-                            # )
+                            receiverSock = self.traceProcessor.socketPool.getSocket(
+                                destinationIP, destinationPort, sourceIP, sourcePort
+                            )
 
-                            # if not receiverSock:
+                            if not receiverSock:
 
-                            #     self.traceProcessor.socketPool.addSocket(
-                            #         SocketElement(
-                            #             destinationIP,
-                            #             destinationPort,
-                            #             sourceIP,
-                            #             sourcePort,
-                            #             SocketStatus.RESPONSE,
-                            #             None,
-                            #         )
-                            #     )
-                            # else:
-                            #     self.traceProcessor.socketPool.updateSocket(
-                            #         receiverSock, SocketStatus.RESPONSE, None
-                            #     )
+                                self.traceProcessor.socketPool.addSocket(
+                                    SocketElement(
+                                        destinationIP,
+                                        destinationPort,
+                                        sourceIP,
+                                        sourcePort,
+                                        SocketStatus.RESPONSE,
+                                        None,
+                                    )
+                                )
+                            else:
+                                self.traceProcessor.socketPool.updateSocket(
+                                    receiverSock, SocketStatus.RESPONSE, None
+                                )
 
                             # print(f"{bcolors.BOLD}---------------------------")
 
                         # Case where the thread is sending a response
                         else:
-                            # print(
-                            #     f"{bcolors.BOLD}{bcolors.BLUE}{self.container}@{record.pid}{bcolors.ENDC}{bcolors.BOLD}{bcolors.GREEN} sending response{bcolors.ENDC} at time {record.timeStamp}{bcolors.RED} from {sourceIP, sourcePort}{bcolors.YELLOW} to {destinationIP, destinationPort}"
-                            # )
+                            if self.traceProcessor.toPrint:
+                                print(
+                                    f"{bcolors.BOLD}{bcolors.BLUE}{self.container}@{record.pid}{bcolors.ENDC}{bcolors.BOLD}{bcolors.GREEN} sending response{bcolors.ENDC} at time {record.timeStamp}{bcolors.RED} from {sourceIP, sourcePort}{bcolors.YELLOW} to {destinationIP, destinationPort}"
+                                )
+
                             if not senderSock:
                                 print(record.timeStamp, record.command, record.details)
                                 print("ERROR: Socket to send response was not found")
                                 print(
                                     len(self.traceProcessor.traceDestinationReference)
                                 )
+                                for key in self.networkThreadStates:
+                                    print("Source PID", key[0].pid)
+                                    print(self.networkThreadStates[key])
                                 exit()
                             else:
                                 # Add the thread object to the socket, update socket status to be a response
@@ -364,6 +372,26 @@ class Thread:
                                 for networkStateKey in threadStateToPop:
                                     self.networkThreadStates.pop(networkStateKey)
 
+                            for key in self.networkThreadStates:
+                                if self.pid and (
+                                    self.pid == 507139
+                                    or self.pid == 313573
+                                    or self.pid == 507152
+                                ):
+                                    print(self.networkThreadStates[key], "DUMMY")
+                                    print(
+                                        "DUMMY Is new source observed:",
+                                        self.networkThreadStates[
+                                            key
+                                        ].isNewSrcObserved(),
+                                    )
+                                    print(
+                                        "DUMMY Is response sent once:",
+                                        self.networkThreadStates[
+                                            key
+                                        ].isResponseSentOnce(),
+                                    )
+
             elif record.event in [
                 "sys_exit_sendto",
                 "sys_exit_write",
@@ -390,9 +418,12 @@ class Thread:
                 # print(record.timeStamp)
                 # TODO Reference to openresty state from traceprocessor
                 if record.details["daddr"] == self.traceProcessor.gatewayIP:
-                    if not list(
-                        filter(
-                            lambda key: key[0] == None, self.networkThreadStates.keys()
+                    if not len(
+                        list(
+                            filter(
+                                lambda key: key[0] == None,
+                                self.networkThreadStates.keys(),
+                            )
                         )
                     ):
                         for key in list(
@@ -419,9 +450,10 @@ class Thread:
                             networkThreadState, (None, traceID)
                         )
                         # f"{self.container}@{record.pid}  at time {record.timeStamp} from {}"
-                        # print(
-                        #     f"{bcolors.BOLD}{bcolors.BLUE}{self.container}@{record.pid}{bcolors.ENDC}{bcolors.BOLD}{bcolors.GREEN} receiving request{bcolors.ENDC} at time {record.timeStamp}{bcolors.RED} from {record.details['daddr'], record.details['dport']}{bcolors.YELLOW} to {record.details['saddr'], record.details['sport']}"
-                        # )
+                        if self.traceProcessor.toPrint:
+                            print(
+                                f"{bcolors.BOLD}{bcolors.BLUE}{self.container}@{record.pid}{bcolors.ENDC}{bcolors.BOLD}{bcolors.GREEN} receiving request{bcolors.ENDC} at time {record.timeStamp}{bcolors.RED} from {record.details['daddr'], record.details['dport']}{bcolors.YELLOW} to {record.details['saddr'], record.details['sport']}"
+                            )
                     else:
                         activeNetworkThreadStateCount = 0
                         for key in self.networkThreadStates:
@@ -454,9 +486,11 @@ class Thread:
                         if isRequest:
                             incomingRequestTraces = set()
                             # print(record.timeStamp)
-                            # print(
-                            #     f"{bcolors.BOLD}{bcolors.BLUE}{self.container}@{record.pid}{bcolors.ENDC}{bcolors.BOLD}{bcolors.GREEN} receiving request{bcolors.ENDC} at time {record.timeStamp}{bcolors.RED} from {record.details['daddr'], record.details['dport']}{bcolors.YELLOW} to {record.details['saddr'], record.details['sport']}"
-                            # )
+                            if self.traceProcessor.toPrint:
+                                print(
+                                    f"{bcolors.BOLD}{bcolors.BLUE}{self.container}@{record.pid}{bcolors.ENDC}{bcolors.BOLD}{bcolors.GREEN} receiving request{bcolors.ENDC} at time {record.timeStamp}{bcolors.RED} from {record.details['daddr'], record.details['dport']}{bcolors.YELLOW} to {record.details['saddr'], record.details['sport']}"
+                                )
+
                             # print("--------------------------")
 
                             for networkStateKey in sourceThread.networkThreadStates:
@@ -548,14 +582,16 @@ class Thread:
                                     )
                         # receiving a response
                         else:
-                            pass
-                            # print(
-                            #     f"{bcolors.BOLD}{bcolors.BLUE}{self.container}@{record.pid}{bcolors.ENDC}{bcolors.BOLD}{bcolors.GREEN} receiving response{bcolors.ENDC} at time {record.timeStamp}{bcolors.RED} from {record.details['daddr'], record.details['dport']}{bcolors.YELLOW} to {record.details['saddr'], record.details['sport']}"
-                            # )
+                            # pass
+                            if self.traceProcessor.toPrint:
+                                print(
+                                    f"{bcolors.BOLD}{bcolors.BLUE}{self.container}@{record.pid}{bcolors.ENDC}{bcolors.BOLD}{bcolors.GREEN} receiving response{bcolors.ENDC} at time {record.timeStamp}{bcolors.RED} from {record.details['daddr'], record.details['dport']}{bcolors.YELLOW} to {record.details['saddr'], record.details['sport']}"
+                                )
+
                     # if sender socket not found
-                    else:
-                        print("sender socket not found")
-                        exit()
+                    # else:
+                    #     print("sender socket not found")
+                    # exit()
 
             elif record.event in [
                 "sys_exit_recvfrom",
