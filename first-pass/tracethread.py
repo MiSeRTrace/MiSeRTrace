@@ -38,11 +38,12 @@ class ThreadSchedState:
 
 
 class SendSyscallState:
-    def __init__(self):
+    def __init__(self,startTime:float):
         self.inetSockSetStateObserved = False
         self.tcpProbeObserved = False
         self.request = True
         self.response = False
+        self.startTime = startTime
 
     def setInetSockSetStateObserved(self):
         self.inetSockSetStateObserved = True
@@ -58,8 +59,8 @@ class SendSyscallState:
 
 
 class RecvSyscallState:
-    def __init__(self):
-        pass
+    def __init__(self,startTime:float):
+        self.startTime = startTime
 
 
 class Thread:
@@ -108,7 +109,7 @@ class Thread:
            Requestor State Store (Append only log per key (appened by the recipient only)
            Key:Value of TraceID:State Object(STTIP, attributes)
         """
-        self.tcpState = RecvSyscallState()
+        self.tcpState = RecvSyscallState(0)
 
     def setCurrentSchedState(
         self, timeStamp: float = 0, wakeState: ThreadWakeState = ThreadWakeState.RUNNING
@@ -150,7 +151,7 @@ class Thread:
             ]
             and (len(self.networkThreadStates) or self.forkThreadStates)
         ):
-            self.tcpState = SendSyscallState()
+            self.tcpState = SendSyscallState(record.timeStamp)
 
         elif type(self.tcpState) == SendSyscallState:
             if record.event == "inet_sock_set_state":
@@ -159,6 +160,7 @@ class Thread:
                 # Sometimes, the packet is sent through when a TCP connection is established using "inet_sock_set_state"
                 # "tcp_probe" event is not observed.
                 # Hence, whenever a new TCP connection is established, we create/set the socket state as request.
+                # In the raw format of trace-cmd report, newstate = 1 --> TCP_ESTABLISHED
 
                 if record.details["newstate"] == "1":
                     destinationIP = record.details["saddr"]
@@ -228,15 +230,18 @@ class Thread:
                             self.intermediateThreadStates[
                                 key
                             ] = self.networkThreadStates.pop(key)
-                        for key in list(
-                            filter(
-                                lambda key: key[0] == None,
-                                self.intermediateThreadStates.keys(),
-                            )
-                        ):
                             self.intermediateThreadStates[key].updateEndTime(
                                 record.timeStamp
                             )
+                        # for key in list(
+                        #     filter(
+                        #         lambda key: key[0] == None,
+                        #         self.intermediateThreadStates.keys(),
+                        #     )
+                        # ):
+                        #     self.intermediateThreadStates[key].updateEndTime(
+                        #         record.timeStamp
+                        #     )
                         # print(
                         #     f"{bcolors.BOLD}{bcolors.BLUE}{self.container}@{record.pid}{bcolors.ENDC}{bcolors.BOLD}{bcolors.GREEN} sending response{bcolors.ENDC} at time {record.timeStamp}{bcolors.RED} from {sourceIP, sourcePort}{bcolors.YELLOW} to {destinationIP, destinationPort}"
                         # )
@@ -247,8 +252,8 @@ class Thread:
 
                         # Identify if request or response
                         isRequest = True
-                        for networkState in self.networkThreadStates:
-                            threadState = self.networkThreadStates[networkState]
+                        for networkStateKey in self.networkThreadStates:
+                            threadState = self.networkThreadStates[networkStateKey]
                             if (
                                 threadState.srcIP == destinationIP
                                 and threadState.srcPort == destinationPort
@@ -303,9 +308,6 @@ class Thread:
                             # print(
                             #     f"{bcolors.BOLD}{bcolors.BLUE}{self.container}@{record.pid}{bcolors.ENDC}{bcolors.BOLD}{bcolors.GREEN} sending response{bcolors.ENDC} at time {record.timeStamp}{bcolors.RED} from {sourceIP, sourcePort}{bcolors.YELLOW} to {destinationIP, destinationPort}"
                             # )
-                            senderSock = self.traceProcessor.socketPool.getSocket(
-                                sourceIP, sourcePort, destinationIP, destinationPort
-                            )
                             if not senderSock:
                                 print(record.timeStamp, record.command, record.details)
                                 print("ERROR: Socket to send response was not found")
@@ -326,7 +328,7 @@ class Thread:
                                 # Update end time in current and intermediate stores
                                 # Move to intermediate if another request has arrived
 
-                                destinationSock = (
+                                receiverSock = (
                                     self.traceProcessor.socketPool.getSocket(
                                         destinationIP,
                                         destinationPort,
@@ -334,7 +336,10 @@ class Thread:
                                         sourcePort,
                                     )
                                 )
-                                destinationThread = destinationSock.srcThread
+                                if not receiverSock:
+                                    print("ERROR: Currently sending response, however socket which sent trequest not found sock not found for sending response")
+                                    exit()
+                                destinationThread = receiverSock.srcThread
 
                                 for networkStateKey in self.intermediateThreadStates:
                                     if networkStateKey[0] == destinationThread:
@@ -378,7 +383,7 @@ class Thread:
             "sys_enter_recvmsg",
             "sys_enter_readv",
         ]:
-            self.tcpState = RecvSyscallState()
+            self.tcpState = RecvSyscallState(record.timeStamp)
 
         elif type(self.tcpState) == RecvSyscallState:
             if record.event == "tcp_rcv_space_adjust":
@@ -410,7 +415,7 @@ class Thread:
                             traceID,
                             self.traceProcessor.gatewayIP,
                             sourcePort,
-                            record.timeStamp,
+                            self.tcpState.startTime,
                         )
                         # No reference to source thread as the source thread is docker gateway
                         self.addRootNetworkThreadState(
@@ -425,9 +430,10 @@ class Thread:
                         for key in self.networkThreadStates:
                             if key[0] == None:
                                 activeNetworkThreadStateCount += 1
-                                self.networkThreadStates[
-                                    key
-                                ].endTimeStamp = record.timeStamp
+
+                                self.networkThreadStates[key].updateEndTime(
+                                    record.timeStamp
+                                )
                         if activeNetworkThreadStateCount > 1:
                             print(
                                 "ERROR : More than one active network thread state in nginx thread"
@@ -449,18 +455,22 @@ class Thread:
                             isRequest = True
 
                         if isRequest:
-                            incomingRequestTraces = list()
+                            incomingRequestTraces = set()
                             # print(record.timeStamp)
                             # print(
                             #     f"{bcolors.BOLD}{bcolors.BLUE}{self.container}@{record.pid}{bcolors.ENDC}{bcolors.BOLD}{bcolors.GREEN} receiving request{bcolors.ENDC} at time {record.timeStamp}{bcolors.RED} from {record.details['daddr'], record.details['dport']}{bcolors.YELLOW} to {record.details['saddr'], record.details['sport']}"
                             # )
                             # print("--------------------------")
+
                             for networkStateKey in sourceThread.networkThreadStates:
-                                incomingRequestTraces.append(networkStateKey[1])
+                                incomingRequestTraces.add(networkStateKey[1])
+                            
+                            for forkState in sourceThread.forkThreadStates:
+                                incomingRequestTraces.add(forkState.traceID)
 
                             # Check if a state already exists in the current network states
                             # Logic to move into intermediate
-                            threadToPop = list()
+                            statesToPop = list()
                             for networkStateKey in self.networkThreadStates:
                                 sourceThreadToBeChecked = networkStateKey[0]
                                 netState = self.networkThreadStates[networkStateKey]
@@ -476,13 +486,15 @@ class Thread:
                                     self.intermediateThreadStates[
                                         (sourceThread, netState.traceID)
                                     ] = netState
-                                    threadToPop.append(networkStateKey)
+                                    statesToPop.append(networkStateKey)
+
                             # Removing all the threads from activethreadstate which got moved to intermediate store
-                            for networkStateKey in threadToPop:
+                            for networkStateKey in statesToPop:
                                 self.networkThreadStates.pop(networkStateKey)
 
-                            # Move existing state to permanent log due to it incoming request being from same source
-                            for networkStateKey in list(self.intermediateThreadStates):
+                            statesToPop = list()
+                            # Move existing state to permanent log from intermediate store due to it incoming request being from same source
+                            for networkStateKey in self.intermediateThreadStates:
                                 sourceThreadToBeChecked = networkStateKey[0]
                                 netState = self.intermediateThreadStates[
                                     networkStateKey
@@ -491,32 +503,30 @@ class Thread:
                                     sourceThread == sourceThreadToBeChecked
                                     and netState.traceID in incomingRequestTraces
                                 ):
-                                    self.networkThreadStateLog.append(
+                                    statesToPop.append(networkStateKey)
+                                    
+                            for networkStateKey in statesToPop:
+                                self.networkThreadStateLog.append(
                                         self.intermediateThreadStates.pop(
                                             networkStateKey
                                         )
                                     )
 
                             # Create a child state for each (network thread state in the parent)
-                            for networkStateKey in list(
-                                sourceThread.networkThreadStates
-                            ):
+                            for networkStateKey in sourceThread.networkThreadStates:
                                 traceID = networkStateKey[1]
                                 # Checking if state already exists
                                 if (
                                     sourceThread,
                                     traceID,
-                                ) not in self.networkThreadStates and (
-                                    sourceThread,
-                                    traceID,
-                                ) not in self.intermediateThreadStates:
+                                ) not in self.networkThreadStates:
                                     networkThreadState = NetworkThreadState(
                                         sourceThread,
                                         self,
                                         traceID,
                                         sourceIP,
                                         sourcePort,
-                                        record.timeStamp,
+                                        self.tcpState.startTime,
                                     )
                                     self.addNetworkThreadState(
                                         networkThreadState, (sourceThread, traceID)
@@ -529,26 +539,30 @@ class Thread:
                                 if (
                                     sourceThread,
                                     forkTraceID,
-                                ) not in self.networkThreadStates and (
-                                    sourceThread,
-                                    forkTraceID,
-                                ) not in self.intermediateThreadStates:
+                                ) not in self.networkThreadStates:
                                     networkThreadState = NetworkThreadState(
                                         sourceThread,
                                         self,
                                         forkTraceID,
                                         sourceIP,
                                         sourcePort,
-                                        record.timeStamp,
+                                        self.tcpState.startTime,
                                     )
                                     self.addNetworkThreadState(
                                         networkThreadState, (sourceThread, forkTraceID)
                                     )
+                        # receiving a response 
                         else:
                             pass
                             # print(
                             #     f"{bcolors.BOLD}{bcolors.BLUE}{self.container}@{record.pid}{bcolors.ENDC}{bcolors.BOLD}{bcolors.GREEN} receiving response{bcolors.ENDC} at time {record.timeStamp}{bcolors.RED} from {record.details['daddr'], record.details['dport']}{bcolors.YELLOW} to {record.details['saddr'], record.details['sport']}"
                             # )
+                    #if sender socket not found 
+                    else:
+                        print("sender socket not found")
+                        exit()
+
+                    
 
             elif record.event in [
                 "sys_exit_recvfrom",
