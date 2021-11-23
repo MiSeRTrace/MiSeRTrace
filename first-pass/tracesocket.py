@@ -4,6 +4,7 @@ from enum import Enum
 class SocketStatus(Enum):
     REQUEST = 0
     RESPONSE = 1
+    UNKNOWN = -1
 
 
 class SocketElement:
