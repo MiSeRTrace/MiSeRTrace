@@ -12,10 +12,16 @@ class TraceRecord:
         )  # 4 is the dictionary to store all attributes of the event
         for content in lineContents[4:]:
             # In case there isn't any key value pair
+            prev = None
             try:
-                attribute, value = content.split("=")
-                self.details[attribute] = value
+                if "=" in content:
+                    attribute, value = content.split("=")
+                    self.details[attribute] = value
+                    prev = self.details[attribute]
+                elif prev:
+                    prev += f" {content}"
             except:
+                print(line)
                 print("Potential error in trace record parsing")
                 exit()
 

@@ -92,6 +92,18 @@ class ThreadPool:
                         parentThread, newThread, parentTraceID, record.timeStamp
                     )
                     newThread.addForkThreadState(forkThreadState)
+                for object in newThread.forkThreadStates:
+                    print(
+                        newThread.pid, "->", object.srcThread, object.traceID, "DUMMY"
+                    )
+                    # print(
+                    #     "DUMMY Is new source observed:",
+                    #     self.networkThreadStates[key].isNewSrcObserved(),
+                    # )
+                    # print(
+                    #     "DUMMY Is response sent once:",
+                    #     self.networkThreadStates[key].isResponseSentOnce(),
+                    # )
             else:
                 print("ERROR: Parent thread not in active thread pool while forking")
                 exit()
