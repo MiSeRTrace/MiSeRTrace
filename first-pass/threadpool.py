@@ -56,6 +56,7 @@ class ThreadPool:
                 newThread = Thread(
                     int(record.details["child_pid"]),
                     parentThread.container,
+                    parentThread.ip,
                     self.traceProcessor,
                     ThreadSchedState(record.timeStamp, ThreadWakeState.WAKING),
                 )
@@ -92,10 +93,10 @@ class ThreadPool:
                         parentThread, newThread, parentTraceID, record.timeStamp
                     )
                     newThread.addForkThreadState(forkThreadState)
-                for object in newThread.forkThreadStates:
-                    print(
-                        newThread.pid, "->", object.srcThread, object.traceID, "DUMMY"
-                    )
+                # for object in newThread.forkThreadStates:
+                #     print(
+                #         newThread.pid, "->", object.srcThread, object.traceID, "DUMMY"
+                    # )
                     # print(
                     #     "DUMMY Is new source observed:",
                     #     self.networkThreadStates[key].isNewSrcObserved(),

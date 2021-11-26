@@ -8,7 +8,7 @@ from threadpool import *
 from tracesocket import *
 from socketpool import *
 
-traceProcessor = TraceProcessor(pathToPIDListFile=sys.argv[1], gatewayIP=sys.argv[2])
+traceProcessor = TraceProcessor(inputFilePath=sys.argv[1],gatewayIP=sys.argv[2])
 
 printLines = "-l" in sys.argv
 lineNumber = 1
@@ -33,4 +33,6 @@ for line in sys.stdin:
         print("\n--------\n")
 
 traceProcessor.terminate()
-print(len(traceProcessor.traceDestinationReference))
+print(len(traceProcessor.traceGenesis))
+
+traceProcessor.serializeTraceData()

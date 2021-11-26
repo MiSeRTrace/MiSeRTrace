@@ -68,11 +68,13 @@ class Thread:
         self,
         pid: int,
         container: str,
+        ip: str,
         traceProcessor,
         currentSchedState: ThreadSchedState = ThreadSchedState(),
     ):
         self.pid = pid
         self.container = container
+        self.ip = ip
         self.traceProcessor = traceProcessor
         self.currentSchedState: ThreadSchedState = currentSchedState
 
@@ -136,23 +138,23 @@ class Thread:
 
     def addRootNetworkThreadState(self, networkThreadState: NetworkThreadState, key):
         self.networkThreadStates[key] = networkThreadState
-        self.traceProcessor.addTraceDestinationReference(
+        self.traceProcessor.addTraceGenesis(
             networkThreadState.traceID, networkThreadState
         )
 
     def consumeRecord(self, record: TraceRecord):
-        if self.pid and (self.pid == 507129):
-            for key in self.networkThreadStates:
-                print(self.pid, self.networkThreadStates[key], "DUMMY")
-                print(
-                    "DUMMY Is new source observed:",
-                    self.networkThreadStates[key].isNewSrcObserved(),
-                )
-                print(
-                    "DUMMY Is response sent once:",
-                    self.networkThreadStates[key].isResponseSentOnce(),
-                )
-            print("--------------------------------DUMMY")
+        # if self.pid and (self.pid == 507129):
+            # for key in self.networkThreadStates:
+            #     print(self.pid, self.networkThreadStates[key], "DUMMY")
+            #     print(
+            #         "DUMMY Is new source observed:",
+            #         self.networkThreadStates[key].isNewSrcObserved(),
+            #     )
+            #     print(
+            #         "DUMMY Is response sent once:",
+            #         self.networkThreadStates[key].isResponseSentOnce(),
+            #     )
+            # print("--------------------------------DUMMY")
 
         if (
             record.event
@@ -259,6 +261,8 @@ class Thread:
                             print(
                                 f"{bcolors.BOLD}{bcolors.BLUE}{self.container}@{record.pid}{bcolors.ENDC}{bcolors.BOLD}{bcolors.GREEN} sending response{bcolors.ENDC} at time {record.timeStamp}{bcolors.RED} from {sourceIP, sourcePort}{bcolors.YELLOW} to {destinationIP, destinationPort}"
                             )
+                    
+                    # If destination isn't gateway
                     else:
                         senderSock = self.traceProcessor.socketPool.getSocket(
                             sourceIP, sourcePort, destinationIP, destinationPort
@@ -326,28 +330,28 @@ class Thread:
                                     f"{bcolors.BOLD}{bcolors.BLUE}{self.container}@{record.pid}{bcolors.ENDC}{bcolors.BOLD}{bcolors.GREEN} sending response{bcolors.ENDC} at time {record.timeStamp}{bcolors.RED} from {sourceIP, sourcePort}{bcolors.YELLOW} to {destinationIP, destinationPort}"
                                 )
 
-                            if self.pid and (
-                                # self.pid == 507139
-                                self.pid == 313573
-                                # or self.pid == 507152
-                                or self.pid == 507290
-                            ):
-                                for key in self.networkThreadStates:
-                                    print(
-                                        self.pid, self.networkThreadStates[key], "DUMMY"
-                                    )
-                                    print(
-                                        "DUMMY Is new source observed:",
-                                        self.networkThreadStates[
-                                            key
-                                        ].isNewSrcObserved(),
-                                    )
-                                    print(
-                                        "DUMMY Is response sent once:",
-                                        self.networkThreadStates[
-                                            key
-                                        ].isResponseSentOnce(),
-                                    )
+                            # if self.pid and (
+                            #     # self.pid == 507139
+                            #     self.pid == 313573
+                            #     # or self.pid == 507152
+                            #     or self.pid == 507290
+                            # ):
+                                # for key in self.networkThreadStates:
+                                #     print(
+                                #         self.pid, self.networkThreadStates[key], "DUMMY"
+                                #     )
+                                #     print(
+                                #         "DUMMY Is new source observed:",
+                                #         self.networkThreadStates[
+                                #             key
+                                #         ].isNewSrcObserved(),
+                                #     )
+                                #     print(
+                                #         "DUMMY Is response sent once:",
+                                #         self.networkThreadStates[
+                                #             key
+                                #         ].isResponseSentOnce(),
+                                #     )
                             if not senderSock:
                                 print(record.timeStamp, record.command, record.details)
                                 print(
@@ -355,7 +359,7 @@ class Thread:
                                 )
                                 print("ERROR: Socket to send response was not found")
                                 print(
-                                    len(self.traceProcessor.traceDestinationReference)
+                                    len(self.traceProcessor.traceGenesis)
                                 )
                                 # for key in self.networkThreadStates:
                                 #     print("Source PID", key[0].pid)
@@ -410,29 +414,29 @@ class Thread:
                                 for networkStateKey in threadStateToPop:
                                     self.networkThreadStates.pop(networkStateKey)
 
-                            for key in self.networkThreadStates:
-                                if self.pid and (
-                                    # self.pid == 507139
-                                    self.pid == 313573
-                                    # or self.pid == 507152
-                                    or self.pid == 507290
-                                ):
+                            # for key in self.networkThreadStates:
+                            #     if self.pid and (
+                            #         # self.pid == 507139
+                            #         self.pid == 313573
+                            #         # or self.pid == 507152
+                            #         or self.pid == 507290
+                            #     ):
 
-                                    print(
-                                        self.pid, self.networkThreadStates[key], "DUMMY"
-                                    )
-                                    print(
-                                        "DUMMY Is new source observed:",
-                                        self.networkThreadStates[
-                                            key
-                                        ].isNewSrcObserved(),
-                                    )
-                                    print(
-                                        "DUMMY Is response sent once:",
-                                        self.networkThreadStates[
-                                            key
-                                        ].isResponseSentOnce(),
-                                    )
+                            #         print(
+                            #             self.pid, self.networkThreadStates[key], "DUMMY"
+                            #         )
+                            #         print(
+                            #             "DUMMY Is new source observed:",
+                            #             self.networkThreadStates[
+                            #                 key
+                            #             ].isNewSrcObserved(),
+                            #         )
+                            #         print(
+                            #             "DUMMY Is response sent once:",
+                            #             self.networkThreadStates[
+                            #                 key
+                            #             ].isResponseSentOnce(),
+                            #         )
 
             elif record.event in [
                 "sys_exit_sendto",
