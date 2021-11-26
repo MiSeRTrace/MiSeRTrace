@@ -21,7 +21,7 @@ class TraceProcessor:
 
         with open(inputFilePath, "r") as initialThreads:
             for line in initialThreads.readlines():
-                pid, container, ip ,_ = line.strip().split()
+                pid, container, ip, _ = line.strip().split()
                 pid = int(pid)
                 # print(pid)
                 self.threadPool.addThread(
@@ -41,21 +41,65 @@ class TraceProcessor:
         return False
 
     def serializeTraceData(self):
-        traceData : dict[tuple, dict] = dict()
+        traceData: dict[tuple, dict] = dict()
         for traceId in self.traceGenesis:
             threadState = self.traceGenesis[traceId]
-            traceData[(traceId, threadState.handlingThread.pid, threadState.handlingThread.container, threadState.handlingThread.ip, threadState.startTimeStamp, threadState.endTimeStamp)] = dict()
-            self.recursiveFillTraceData(traceId, threadState.handlingThread.destinationThreadStates, 
-                                        traceData[(traceId, threadState.handlingThread.pid, threadState.handlingThread.container, threadState.handlingThread.ip, threadState.startTimeStamp, threadState.endTimeStamp)])
+            traceData[
+                (
+                    traceId,
+                    threadState.handlingThread.pid,
+                    threadState.handlingThread.container,
+                    threadState.handlingThread.ip,
+                    threadState.startTimeStamp,
+                    threadState.endTimeStamp,
+                )
+            ] = dict()
+            self.recursiveFillTraceData(
+                traceId,
+                threadState.handlingThread.destinationThreadStates,
+                traceData[
+                    (
+                        traceId,
+                        threadState.handlingThread.pid,
+                        threadState.handlingThread.container,
+                        threadState.handlingThread.ip,
+                        threadState.startTimeStamp,
+                        threadState.endTimeStamp,
+                    )
+                ],
+            )
         with open("traceData.json", "w") as outfile:
             json.dump(traceData, outfile)
 
-    def recursiveFillTraceData(self, traceId, destinationThreadStates : dict[int, list[NetworkThreadState or ForkThreadState]], 
-                                    container : dict[tuple, dict]):
+    def recursiveFillTraceData(
+        self,
+        traceId: int,
+        destinationThreadStates: "dict[int, list[NetworkThreadState or ForkThreadState]]",
+        container: "dict[tuple, dict]",
+    ):
         for threadState in destinationThreadStates[traceId]:
-            container[(threadState.handlingThread.pid, threadState.handlingThread.container, threadState.handlingThread.ip, threadState.startTimeStamp, threadState.endTimeStamp)] = dict()
-            self.recursiveFillTraceData(threadState.handlingThread.destinationThreadStates[traceId], 
-                                        container[(threadState.handlingThread.pid, threadState.handlingThread.container, threadState.handlingThread.ip, threadState.startTimeStamp, threadState.endTimeStamp)])
+            container[
+                (
+                    threadState.handlingThread.pid,
+                    threadState.handlingThread.container,
+                    threadState.handlingThread.ip,
+                    threadState.startTimeStamp,
+                    threadState.endTimeStamp,
+                )
+            ] = dict()
+            self.recursiveFillTraceData(
+                traceId,
+                threadState.handlingThread.destinationThreadStates[traceId],
+                container[
+                    (
+                        threadState.handlingThread.pid,
+                        threadState.handlingThread.container,
+                        threadState.handlingThread.ip,
+                        threadState.startTimeStamp,
+                        threadState.endTimeStamp,
+                    )
+                ],
+            )
 
     def consumeRecord(self, record: TraceRecord):
         if not self._validRecord(record):

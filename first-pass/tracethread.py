@@ -144,17 +144,17 @@ class Thread:
 
     def consumeRecord(self, record: TraceRecord):
         # if self.pid and (self.pid == 507129):
-            # for key in self.networkThreadStates:
-            #     print(self.pid, self.networkThreadStates[key], "DUMMY")
-            #     print(
-            #         "DUMMY Is new source observed:",
-            #         self.networkThreadStates[key].isNewSrcObserved(),
-            #     )
-            #     print(
-            #         "DUMMY Is response sent once:",
-            #         self.networkThreadStates[key].isResponseSentOnce(),
-            #     )
-            # print("--------------------------------DUMMY")
+        # for key in self.networkThreadStates:
+        #     print(self.pid, self.networkThreadStates[key], "DUMMY")
+        #     print(
+        #         "DUMMY Is new source observed:",
+        #         self.networkThreadStates[key].isNewSrcObserved(),
+        #     )
+        #     print(
+        #         "DUMMY Is response sent once:",
+        #         self.networkThreadStates[key].isResponseSentOnce(),
+        #     )
+        # print("--------------------------------DUMMY")
 
         if (
             record.event
@@ -261,7 +261,7 @@ class Thread:
                             print(
                                 f"{bcolors.BOLD}{bcolors.BLUE}{self.container}@{record.pid}{bcolors.ENDC}{bcolors.BOLD}{bcolors.GREEN} sending response{bcolors.ENDC} at time {record.timeStamp}{bcolors.RED} from {sourceIP, sourcePort}{bcolors.YELLOW} to {destinationIP, destinationPort}"
                             )
-                    
+
                     # If destination isn't gateway
                     else:
                         senderSock = self.traceProcessor.socketPool.getSocket(
@@ -336,31 +336,29 @@ class Thread:
                             #     # or self.pid == 507152
                             #     or self.pid == 507290
                             # ):
-                                # for key in self.networkThreadStates:
-                                #     print(
-                                #         self.pid, self.networkThreadStates[key], "DUMMY"
-                                #     )
-                                #     print(
-                                #         "DUMMY Is new source observed:",
-                                #         self.networkThreadStates[
-                                #             key
-                                #         ].isNewSrcObserved(),
-                                #     )
-                                #     print(
-                                #         "DUMMY Is response sent once:",
-                                #         self.networkThreadStates[
-                                #             key
-                                #         ].isResponseSentOnce(),
-                                #     )
+                            # for key in self.networkThreadStates:
+                            #     print(
+                            #         self.pid, self.networkThreadStates[key], "DUMMY"
+                            #     )
+                            #     print(
+                            #         "DUMMY Is new source observed:",
+                            #         self.networkThreadStates[
+                            #             key
+                            #         ].isNewSrcObserved(),
+                            #     )
+                            #     print(
+                            #         "DUMMY Is response sent once:",
+                            #         self.networkThreadStates[
+                            #             key
+                            #         ].isResponseSentOnce(),
+                            #     )
                             if not senderSock:
                                 print(record.timeStamp, record.command, record.details)
                                 print(
                                     sourceIP, sourcePort, destinationIP, destinationPort
                                 )
                                 print("ERROR: Socket to send response was not found")
-                                print(
-                                    len(self.traceProcessor.traceGenesis)
-                                )
+                                print(len(self.traceProcessor.traceGenesis))
                                 # for key in self.networkThreadStates:
                                 #     print("Source PID", key[0].pid)
                                 #     print(self.networkThreadStates[key])
