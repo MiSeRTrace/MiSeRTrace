@@ -8,6 +8,7 @@ from threadpool import *
 from tracesocket import *
 from socketpool import *
 
+sys.setrecursionlimit(10000)
 traceProcessor = TraceProcessor(inputFilePath=sys.argv[1], gatewayIP=sys.argv[2])
 
 printLines = "-l" in sys.argv

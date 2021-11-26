@@ -27,6 +27,8 @@ class ThreadPool:
         elif record.event == "sched_process_exit":
             dyingThread: Thread = self.getThread(record.pid)
             if dyingThread:
+                for forkStates in dyingThread.forkThreadStates:
+                    forkStates.updateEndTime(record.timeStamp)
                 dyingThread.setCurrentSchedState(
                     record.timeStamp, ThreadWakeState.EXIT_ZOMBIE
                 )

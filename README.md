@@ -3,10 +3,8 @@
 This is an amazing tool
 You have been warned
 
-trace-cmd report -R -i <path to trace.dat> | sed -E 's/,\s*/,/g'
+trace-cmd report -R -i <path to trace.dat> | grep -vEi "^cpu" | sed -E 's/,\s*/,/g' > report.txt 
 
-<!--TODO Regex for removing first few lines with CPU numbers in the report -->
-<!--TODO Handling case of multiple recvfrom for one request to nginx - ensure to add only one state -->
 <!--TODO 16 or 32 as prev_state in sched_switch - avoid sched_process_exit -->
 <!--TODO Verify whether end times are updated where ever it needs to be -->
 

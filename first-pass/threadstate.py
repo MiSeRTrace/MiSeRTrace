@@ -20,15 +20,13 @@ class NetworkThreadState(ThreadState):
         srcThread,
         handlingThread,
         traceID: int,
-        srcIP: str,
-        srcPort: str,
+        srcSocket,
         startTimeStamp: float,
     ):
         super(NetworkThreadState, self).__init__(
             srcThread, handlingThread, traceID, startTimeStamp
         )
-        self.srcIP: str = srcIP
-        self.srcPort: str = srcPort
+        self.srcSocket = srcSocket
         self.responseSentOnce: bool = False
         self.newSrcObserved: bool = False
 
