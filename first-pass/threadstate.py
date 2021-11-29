@@ -31,7 +31,8 @@ class NetworkThreadState(ThreadState):
         self.newSrcObserved: bool = False
 
     def __str__(self):
-        return f"Source: {self.srcIP}:{self.srcPort} with PID {self.srcThread.pid}, Trace ID: {self.traceID}, Start time: {self.startTimeStamp}"
+        gatewayPid = "Gateway PID"
+        return f"Source: {self.srcSocket.srcIp}:{self.srcSocket.srcPort} with PID {self.srcThread.pid if self.srcThread else gatewayPid}, Trace ID: {self.traceID}, Start time: {self.startTimeStamp}"
 
     def setNewSrcObserved(self):
         self.newSrcObserved = True

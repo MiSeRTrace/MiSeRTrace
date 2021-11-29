@@ -27,8 +27,8 @@ class ThreadPool:
         elif record.event == "sched_process_exit":
             dyingThread: Thread = self.getThread(record.pid)
             if dyingThread:
-                for forkStates in dyingThread.forkThreadStates:
-                    forkStates.updateEndTime(record.timeStamp)
+                for forkState in dyingThread.forkThreadStates:
+                    forkState.updateEndTime(record.timeStamp)
                 dyingThread.setCurrentSchedState(
                     record.timeStamp, ThreadWakeState.EXIT_ZOMBIE
                 )
@@ -50,6 +50,8 @@ class ThreadPool:
                     record.details["parent_pid"],
                     "Child PID:",
                     record.details["child_pid"],
+                    "at",
+                    record.timeStamp,
                 )
             parentThread: Thread = self.getThread(int(record.details["parent_pid"]))
             # print(parentThread)
@@ -126,6 +128,8 @@ class ThreadPool:
 
     def killThread(self, thread: Thread):
         if thread.pid in self.activeThreadPool:
+            for forkState in thread.forkThreadStates:
+                forkState.updateEndTime(self.traceProcessor.lastTimeStamp)
             for key in list(thread.networkThreadStates):
                 thread.networkThreadStateLog.append(thread.networkThreadStates.pop(key))
             for key in list(thread.intermediateThreadStates):

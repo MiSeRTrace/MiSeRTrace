@@ -13,17 +13,22 @@ class TraceProcessor:
         self.threadPool: ThreadPool = ThreadPool(self)
         self.traceID = 0
         self.traceGenesis = dict()
+        self.lastTimeStamp = 0
         self.gatewayIP = ",".join(
             [str(hex(int(i)))[2:].zfill(2) for i in gatewayIP.split(".")]
         )
         # self.globalStateManager: GlobalStateManager = GlobalStateManager(
         #     gsClasses=gsClasses)
+        self.ipStore = dict()
 
         with open(inputFilePath, "r") as initialThreads:
             for line in initialThreads.readlines():
                 pid, container, ip, _ = line.strip().split()
                 pid = int(pid)
                 # print(pid)
+                self.ipStore[
+                    ",".join([str(hex(int(i)))[2:].zfill(2) for i in ip.split(".")])
+                ] = container
                 self.threadPool.addThread(
                     Thread(
                         pid,
@@ -59,6 +64,7 @@ class TraceProcessor:
             if traceId in threadState.handlingThread.destinationThreadStates:
                 self._recursiveFillTraceData(
                     traceId,
+                    threadState.startTimeStamp,
                     threadState.handlingThread.destinationThreadStates,
                     traceData[
                         (
@@ -77,34 +83,44 @@ class TraceProcessor:
     def _recursiveFillTraceData(
         self,
         traceId: int,
+        parentStateStartTimeStamp: float,
         destinationThreadStates: "dict[int, list[NetworkThreadState or ForkThreadState]]",
         container: "dict[tuple, dict]",
     ):
         for threadState in destinationThreadStates[traceId]:
-            container[
-                (
-                    threadState.handlingThread.pid,
-                    threadState.handlingThread.container,
-                    threadState.handlingThread.ip,
-                    threadState.startTimeStamp,
-                    threadState.endTimeStamp,
-                )
-            ] = dict()
+            if threadState.startTimeStamp >= parentStateStartTimeStamp:
+                if type(threadState) == ForkThreadState:
+                    state = "ForkThreadState"
+                else:
+                    state = "NetworkThreadState"
 
-            if traceId in threadState.handlingThread.destinationThreadStates:
-                self._recursiveFillTraceData(
-                    traceId,
-                    threadState.handlingThread.destinationThreadStates,
-                    container[
-                        (
-                            threadState.handlingThread.pid,
-                            threadState.handlingThread.container,
-                            threadState.handlingThread.ip,
-                            threadState.startTimeStamp,
-                            threadState.endTimeStamp,
-                        )
-                    ],
-                )
+                container[
+                    (
+                        state,
+                        threadState.handlingThread.pid,
+                        threadState.handlingThread.container,
+                        threadState.handlingThread.ip,
+                        threadState.startTimeStamp,
+                        threadState.endTimeStamp,
+                    )
+                ] = dict()
+
+                if traceId in threadState.handlingThread.destinationThreadStates:
+                    self._recursiveFillTraceData(
+                        traceId,
+                        threadState.startTimeStamp,
+                        threadState.handlingThread.destinationThreadStates,
+                        container[
+                            (
+                                state,
+                                threadState.handlingThread.pid,
+                                threadState.handlingThread.container,
+                                threadState.handlingThread.ip,
+                                threadState.startTimeStamp,
+                                threadState.endTimeStamp,
+                            )
+                        ],
+                    )
 
     def consumeRecord(self, record: TraceRecord):
         if not self._validRecord(record):
@@ -113,6 +129,7 @@ class TraceProcessor:
             self.threadPool.processSchedEvents(record)
         else:
             self.processEvents(record)
+        self.lastTimeStamp = record.timeStamp
         return True
 
     # basic validation checks can be added here
