@@ -7,6 +7,20 @@ from globalstatemanager import GlobalStateManager
 from pprint import pprint
 
 
+class bcolors:
+    PINK = "\033[95m"
+    BLUE = "\033[94m"
+    CYAN = "\033[96m"
+    GREEN = "\033[92m"
+    YELLOW = "\033[93m"
+    RED = "\033[91m"
+    ENDC = "\033[0m"
+    BOLD = "\033[1m"
+    UNDERLINE = "\033[4m"
+    GETSOCK = "\033[38;5;175m"
+    ADDSOCK = "\033[38;5;175m"
+
+
 class TraceProcessor:
     def __init__(self, inputFilePath: str, gatewayIP: str):
         self.socketPool: SocketPool = SocketPool()
@@ -20,6 +34,9 @@ class TraceProcessor:
         # self.globalStateManager: GlobalStateManager = GlobalStateManager(
         #     gsClasses=gsClasses)
         self.ipStore = dict()
+        self.tabCount = 0
+        self.rawFormat = False
+        self.colored = False
 
         with open(inputFilePath, "r") as initialThreads:
             for line in initialThreads.readlines():
@@ -62,6 +79,32 @@ class TraceProcessor:
             ] = dict()
 
             if traceId in threadState.handlingThread.destinationThreadStates:
+                if not self.rawFormat:
+                    if self.colored:
+                        print(
+                            self.tabCount * "\t",
+                            bcolors.PINK,
+                            traceId,
+                            bcolors.BLUE,
+                            bcolors.BOLD,
+                            threadState.handlingThread.container,
+                            "at time",
+                            bcolors.GREEN,
+                            threadState.startTimeStamp,
+                            "to",
+                            bcolors.RED,
+                            threadState.endTimeStamp,
+                        )
+                    else:
+                        print(
+                            self.tabCount * "\t",
+                            traceId,
+                            threadState.handlingThread.container,
+                            "at time",
+                            threadState.startTimeStamp,
+                            "to",
+                            threadState.endTimeStamp,
+                        )
                 self._recursiveFillTraceData(
                     traceId,
                     threadState.startTimeStamp,
@@ -78,7 +121,8 @@ class TraceProcessor:
                     ],
                 )
 
-        pprint(traceData)
+        if self.rawFormat:
+            pprint(traceData)
 
     def _recursiveFillTraceData(
         self,
@@ -94,6 +138,8 @@ class TraceProcessor:
                 else:
                     state = "NetworkThreadState"
 
+                self.tabCount += 1
+
                 container[
                     (
                         state,
@@ -104,8 +150,46 @@ class TraceProcessor:
                         threadState.endTimeStamp,
                     )
                 ] = dict()
-
+                if state == "ForkThreadState":
+                    printState = "Fork"
+                else:
+                    printState = "Net"
                 if traceId in threadState.handlingThread.destinationThreadStates:
+                    if not self.rawFormat:
+                        if self.colored:
+                            print(
+                                self.tabCount * "\t",
+                                bcolors.BOLD,
+                                bcolors.PINK,
+                                traceId,
+                                bcolors.BOLD
+                                + bcolors.YELLOW
+                                + printState
+                                + bcolors.ENDC,
+                                bcolors.BOLD,
+                                bcolors.BLUE,
+                                threadState.handlingThread.container,
+                                bcolors.ENDC,
+                                "at time",
+                                bcolors.GREEN,
+                                threadState.startTimeStamp,
+                                bcolors.ENDC,
+                                "to",
+                                bcolors.RED,
+                                threadState.endTimeStamp,
+                            )
+                        else:
+                            print(
+                                self.tabCount * "\t",
+                                traceId,
+                                printState,
+                                threadState.handlingThread.container,
+                                "at time",
+                                threadState.startTimeStamp,
+                                "to",
+                                threadState.endTimeStamp,
+                            )
+
                     self._recursiveFillTraceData(
                         traceId,
                         threadState.startTimeStamp,
@@ -121,6 +205,7 @@ class TraceProcessor:
                             )
                         ],
                     )
+                self.tabCount -= 1
 
     def consumeRecord(self, record: TraceRecord):
         if not self._validRecord(record):

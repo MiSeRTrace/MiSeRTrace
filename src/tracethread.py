@@ -143,19 +143,6 @@ class Thread:
         )
 
     def consumeRecord(self, record: TraceRecord):
-        # if self.pid and (self.pid == 507129):
-        # for key in self.networkThreadStates:
-        #     print(self.pid, self.networkThreadStates[key], "DUMMY")
-        #     print(
-        #         "DUMMY Is new source observed:",
-        #         self.networkThreadStates[key].isNewSrcObserved(),
-        #     )
-        #     print(
-        #         "DUMMY Is response sent once:",
-        #         self.networkThreadStates[key].isResponseSentOnce(),
-        #     )
-        # print("--------------------------------DUMMY")
-
         if (
             record.event
             in [
@@ -251,7 +238,6 @@ class Thread:
                                 self.networkThreadStates.keys(),
                             )
                         ):
-                            # print(self.networkThreadStates[key])
                             self.intermediateThreadStates[
                                 key
                             ] = self.networkThreadStates.pop(key)
@@ -267,19 +253,15 @@ class Thread:
                             self.intermediateThreadStates[key].updateEndTime(
                                 record.timeStamp
                             )
-                        # for key in list(
-                        #     filter(qq
-                        #         lambda key: key[0] == None,
-                        #         self.intermediateThreadStates.keys(),
-                        #     )
-                        # ):
-                        #     self.intermediateThreadStates[key].updateEndTime(
-                        #         record.timeStamp
-                        #     )
                         if self.traceProcessor.toPrint:
-                            print(
-                                f"{bcolors.BOLD}{bcolors.BLUE}{self.container}@{record.pid}{bcolors.ENDC}{bcolors.BOLD}{bcolors.GREEN} sending response{bcolors.ENDC} at time {record.timeStamp}{bcolors.RED} from {sourceIP, sourcePort}{bcolors.YELLOW} to {destinationIP, destinationPort}"
-                            )
+                            if self.traceProcessor.colored:
+                                print(
+                                    f"{bcolors.BOLD}{bcolors.BLUE}{self.container}@{record.pid}{bcolors.ENDC}{bcolors.BOLD}{bcolors.GREEN} sending response{bcolors.ENDC} at time {record.timeStamp}{bcolors.RED} from {sourceIP, sourcePort}{bcolors.YELLOW} to {destinationIP, destinationPort}"
+                                )
+                            else:
+                                print(
+                                    f"{self.container}@{record.pid} sending response at time {record.timeStamp} from {sourceIP, sourcePort} to {destinationIP, destinationPort}"
+                                )
 
                     # If destination isn't gateway
                     # elif sourceIP == self.ip:
@@ -302,9 +284,14 @@ class Thread:
                                 break
                         if isRequest:
                             if self.traceProcessor.toPrint:
-                                print(
-                                    f"{bcolors.BOLD}{bcolors.BLUE}{self.container}@{record.pid}{bcolors.ENDC}{bcolors.BOLD}{bcolors.GREEN} sending request{bcolors.ENDC} at time {record.timeStamp}{bcolors.RED} from {sourceIP, sourcePort}{bcolors.YELLOW} to {destinationIP, destinationPort}"
-                                )
+                                if self.traceProcessor.colored:
+                                    print(
+                                        f"{bcolors.BOLD}{bcolors.BLUE}{self.container}@{record.pid}{bcolors.ENDC}{bcolors.BOLD}{bcolors.GREEN} sending request{bcolors.ENDC} at time {record.timeStamp}{bcolors.RED} from {sourceIP, sourcePort}{bcolors.YELLOW} to {destinationIP, destinationPort}"
+                                    )
+                                else:
+                                    print(
+                                        f"{self.container}@{record.pid} sending request at time {record.timeStamp} from {sourceIP, sourcePort} to {destinationIP, destinationPort}"
+                                    )
 
                             if not senderSock:
                                 self.traceProcessor.socketPool.addSocket(
@@ -341,36 +328,18 @@ class Thread:
                                     receiverSock, SocketStatus.RESPONSE, None
                                 )
 
-                            # print(f"{bcolors.BOLD}---------------------------")
-
                         # Case where the thread is sending a response
                         else:
                             if self.traceProcessor.toPrint:
-                                print(
-                                    f"{bcolors.BOLD}{bcolors.BLUE}{self.container}@{record.pid}{bcolors.ENDC}{bcolors.BOLD}{bcolors.GREEN} sending response{bcolors.ENDC} at time {record.timeStamp}{bcolors.RED} from {sourceIP, sourcePort}{bcolors.YELLOW} to {destinationIP, destinationPort}"
-                                )
+                                if self.traceProcessor.colored:
+                                    print(
+                                        f"{bcolors.BOLD}{bcolors.BLUE}{self.container}@{record.pid}{bcolors.ENDC}{bcolors.BOLD}{bcolors.GREEN} sending response{bcolors.ENDC} at time {record.timeStamp}{bcolors.RED} from {sourceIP, sourcePort}{bcolors.YELLOW} to {destinationIP, destinationPort}"
+                                    )
+                                else:
+                                    print(
+                                        f"{self.container}@{record.pid} sending response at time {record.timeStamp} from {sourceIP, sourcePort} to {destinationIP, destinationPort}"
+                                    )
 
-                            # if self.pid and (
-                            #     self.pid == 313573
-                            #     # or self.pid == 507152
-                            #     or self.pid == 507306
-                            # ):
-                            #     for key in self.networkThreadStates:
-                            #         print(
-                            #             self.pid, self.networkThreadStates[key], "DUMMY"
-                            #         )
-                            #         print(
-                            #             "DUMMY Is new source observed:",
-                            #             self.networkThreadStates[
-                            #                 key
-                            #             ].isNewSrcObserved(),
-                            #         )
-                            #         print(
-                            #             "DUMMY Is response sent once:",
-                            #             self.networkThreadStates[
-                            #                 key
-                            #             ].isResponseSentOnce(),
-                            #         )
                             if not senderSock:
                                 print(record.timeStamp, record.command, record.details)
                                 print(
@@ -448,31 +417,6 @@ class Thread:
                                 for networkStateKey in threadStateToPop:
                                     self.networkThreadStates.pop(networkStateKey)
 
-                            # for key in self.networkThreadStates:
-                            #     if self.pid and (
-                            #         # self.pid == 507139
-                            #         self.pid == 507306
-                            #         or self.pid == 313573
-                            #     ):
-
-                            #         print(
-                            #             self.pid, self.networkThreadStates[key], "DUMMY"
-                            #         )
-                            #         print(
-                            #             "DUMMY Is new source observed:",
-                            #             self.networkThreadStates[
-                            #                 key
-                            #             ].isNewSrcObserved(),
-                            #         )
-                            #         print(
-                            #             "DUMMY Is response sent once:",
-                            #             self.networkThreadStates[
-                            #                 key
-                            #             ].isResponseSentOnce(),
-                            #         )
-                    # if IP's in the wrong order in the tcp_probe
-                    # else:
-
             elif record.event in [
                 "sys_exit_sendto",
                 "sys_exit_write",
@@ -494,10 +438,6 @@ class Thread:
         elif type(self.tcpState) == RecvSyscallState:
             if record.event == "tcp_rcv_space_adjust":
                 # Check if Frontend container
-                # print(record.details["daddr"])
-                # print(self.traceProcessor.gatewayIP)
-                # print(record.timeStamp)
-                # TODO Reference to openresty state from traceprocessor
                 if record.details["daddr"] == self.traceProcessor.gatewayIP:
                     if not len(
                         list(
@@ -538,11 +478,15 @@ class Thread:
                             networkThreadState,
                             (None, traceID, self.traceProcessor.gatewayIP, sourcePort),
                         )
-                        # f"{self.container}@{record.pid}  at time {record.timeStamp} from {}"
                         if self.traceProcessor.toPrint:
-                            print(
-                                f"{bcolors.BOLD}{bcolors.BLUE}{self.container}@{record.pid}{bcolors.ENDC}{bcolors.BOLD}{bcolors.GREEN} receiving request{bcolors.ENDC} at time {record.timeStamp}{bcolors.RED} from {record.details['daddr'], record.details['dport']}{bcolors.YELLOW} to {record.details['saddr'], record.details['sport']}"
-                            )
+                            if self.traceProcessor.colored:
+                                print(
+                                    f"{bcolors.BOLD}{bcolors.BLUE}{self.container}@{record.pid}{bcolors.ENDC}{bcolors.BOLD}{bcolors.GREEN} receiving request{bcolors.ENDC} at time {record.timeStamp}{bcolors.RED} from {record.details['daddr'], record.details['dport']}{bcolors.YELLOW} to {record.details['saddr'], record.details['sport']}"
+                                )
+                            else:
+                                print(
+                                    f"{self.container}@{record.pid} receiving request at time {record.timeStamp} from {record.details['daddr'], record.details['dport']} to {record.details['saddr'], record.details['sport']}"
+                                )
                     else:
                         activeNetworkThreadStateCount = 0
                         for key in self.networkThreadStates:
@@ -574,21 +518,21 @@ class Thread:
 
                         if isRequest:
                             incomingRequestTraces = set()
-                            # print(record.timeStamp)
                             if self.traceProcessor.toPrint:
-                                print(
-                                    f"{bcolors.BOLD}{bcolors.BLUE}{self.container}@{record.pid}{bcolors.ENDC}{bcolors.BOLD}{bcolors.GREEN} receiving request{bcolors.ENDC} at time {record.timeStamp}{bcolors.RED} from {record.details['daddr'], record.details['dport']}{bcolors.YELLOW} to {record.details['saddr'], record.details['sport']}"
-                                )
-
-                            # print("--------------------------")
+                                if self.traceProcessor.colored:
+                                    print(
+                                        f"{bcolors.BOLD}{bcolors.BLUE}{self.container}@{record.pid}{bcolors.ENDC}{bcolors.BOLD}{bcolors.GREEN} receiving request{bcolors.ENDC} at time {record.timeStamp}{bcolors.RED} from {record.details['daddr'], record.details['dport']}{bcolors.YELLOW} to {record.details['saddr'], record.details['sport']}"
+                                    )
+                                else:
+                                    print(
+                                        f"{self.container}@{record.pid} receiving request at time {record.timeStamp} from {record.details['daddr'], record.details['dport']} to {record.details['saddr'], record.details['sport']}"
+                                    )
 
                             for networkStateKey in sourceThread.networkThreadStates:
                                 incomingRequestTraces.add(networkStateKey[1])
 
                             for forkState in sourceThread.forkThreadStates:
                                 incomingRequestTraces.add(forkState.traceID)
-
-                            # print(incomingRequestTraces)
 
                             statesToPop = list()
                             # Move existing state to permanent log from intermediate store due to it incoming request being from same source
@@ -599,7 +543,6 @@ class Thread:
                                 netState = self.intermediateThreadStates[
                                     networkStateKey
                                 ]
-                                # print("intermediate States", netState)
                                 if (
                                     sourceThread == sourceThreadToBeChecked
                                     and sourceIPToBeChecked == netState.srcSocket.srcIp
@@ -622,7 +565,6 @@ class Thread:
                                 sourceIPToBeChecked = networkStateKey[2]
                                 sourcePortToBeChecked = networkStateKey[3]
                                 netState = self.networkThreadStates[networkStateKey]
-                                # print("Trace ID in netstate:", netState.traceID)
                                 if (
                                     sourceThread != sourceThreadToBeChecked
                                     or netState.traceID not in incomingRequestTraces
@@ -660,7 +602,6 @@ class Thread:
                                     )
                                     # Checking if state already exists
                                     if key not in self.networkThreadStates:
-                                        # print("Creating new state", record.timeStamp)
                                         networkThreadState = NetworkThreadState(
                                             sourceThread,
                                             self,
@@ -688,15 +629,6 @@ class Thread:
                                 print(len(self.traceProcessor.traceGenesis))
                                 self.traceProcessor.serializeTraceData()
                                 exit()
-                                # print(
-                                #     record.details,
-                                #     record.timeStamp,
-                                #     "ERROR HERE",
-                                #     self == sourceThread,
-                                #     sourceThread.pid,
-                                #     self.pid,
-                                # )
-                                # exit()
 
                             # Create a child state for each (fork thread state in the parent)
                             for forkState in sourceThread.forkThreadStates:
@@ -709,7 +641,6 @@ class Thread:
                                     sourcePort,
                                 )
                                 if key not in self.networkThreadStates:
-                                    # print("Creating New State", record.timeStamp)
                                     networkThreadState = NetworkThreadState(
                                         sourceThread,
                                         self,
@@ -733,16 +664,15 @@ class Thread:
                                     )
                         # receiving a response
                         else:
-                            # pass
                             if self.traceProcessor.toPrint:
-                                print(
-                                    f"{bcolors.BOLD}{bcolors.BLUE}{self.container}@{record.pid}{bcolors.ENDC}{bcolors.BOLD}{bcolors.GREEN} receiving response{bcolors.ENDC} at time {record.timeStamp}{bcolors.RED} from {record.details['daddr'], record.details['dport']}{bcolors.YELLOW} to {record.details['saddr'], record.details['sport']}"
-                                )
-
-                    # if sender socket not found
-                    # else:
-                    #     print("sender socket not found")
-                    # exit()
+                                if self.traceProcessor.colored:
+                                    print(
+                                        f"{bcolors.BOLD}{bcolors.BLUE}{self.container}@{record.pid}{bcolors.ENDC}{bcolors.BOLD}{bcolors.GREEN} receiving response{bcolors.ENDC} at time {record.timeStamp}{bcolors.RED} from {record.details['daddr'], record.details['dport']}{bcolors.YELLOW} to {record.details['saddr'], record.details['sport']}"
+                                    )
+                                else:
+                                    print(
+                                        f"{self.container}@{record.pid} receiving response at time {record.timeStamp} from {record.details['daddr'], record.details['dport']} to {record.details['saddr'], record.details['sport']}"
+                                    )
 
             elif record.event in [
                 "sys_exit_recvfrom",

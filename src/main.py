@@ -14,11 +14,24 @@ traceProcessor = TraceProcessor(inputFilePath=sys.argv[1], gatewayIP=sys.argv[2]
 printLines = "-l" in sys.argv
 lineNumber = 1
 
+
 verbose = "-v" in sys.argv
 if verbose:
     traceProcessor.toPrint = True
 else:
     traceProcessor.toPrint = False
+
+rawFormat = "-R" in sys.argv
+if rawFormat:
+    traceProcessor.rawFormat = True
+else:
+    traceProcessor.rawFormat = False
+
+colored = "-c" in sys.argv
+if colored:
+    traceProcessor.colored = True
+else:
+    traceProcessor.colored = False
 
 for line in sys.stdin:
     if printLines:
@@ -34,6 +47,6 @@ for line in sys.stdin:
         print("\n--------\n")
 
 traceProcessor.terminate()
-print(len(traceProcessor.traceGenesis))
+print("Estimated number of requests: ", len(traceProcessor.traceGenesis))
 
 traceProcessor.serializeTraceData()
