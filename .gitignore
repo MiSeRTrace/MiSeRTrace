@@ -1,8 +1,4 @@
-traceGraph.txt
-.vscode
-first-pass/traceData
-first-pass/__pycache__
-first-pass/.vscode
-src/traceData
-src/__pycache__
-src/.vscode
+**/traceGraph.txt
+**/__pycache__
+**/.vscode
+**/traceData

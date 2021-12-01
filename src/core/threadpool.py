@@ -1,4 +1,4 @@
-from tracethread import *
+from core.tracethread import *
 
 
 class ThreadPool:

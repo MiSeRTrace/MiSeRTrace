@@ -1,10 +1,11 @@
-from socketpool import *
-from threadpool import *
-from tracerecord import *
-from tracethread import Thread
-from threadstate import ForkThreadState, NetworkThreadState
-from globalstatemanager import GlobalStateManager
+from core.socketpool import *
+from core.threadpool import *
+from core.tracerecord import *
+from core.tracethread import Thread
+from core.threadstate import ForkThreadState, NetworkThreadState
+from core.globalstatemanager import GlobalStateManager
 from pprint import pprint
+import pickle
 
 
 class bcolors:
@@ -55,6 +56,10 @@ class TraceProcessor:
                         ThreadSchedState(0, ThreadWakeState.WAKING),
                     )
                 )
+
+    def dumpFirstPass(self, path: str):
+        with open(path + "/first-pass.pickle", "wb") as pickleDumpFile:
+            pickle.dump(self, pickleDumpFile)
 
     def addTraceGenesis(self, traceID, destinationReference):
         if traceID not in self.traceGenesis:

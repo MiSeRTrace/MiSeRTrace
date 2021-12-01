@@ -1,4 +1,4 @@
-from tracerecord import TraceRecord
+from core.tracerecord import TraceRecord
 
 
 class GlobalStateInterface:

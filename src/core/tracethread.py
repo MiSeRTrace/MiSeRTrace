@@ -1,7 +1,7 @@
 from enum import Enum
-from tracerecord import *
-from threadstate import ForkThreadState, NetworkThreadState
-from tracesocket import SocketElement, SocketStatus
+from core.tracerecord import *
+from core.threadstate import ForkThreadState, NetworkThreadState
+from core.tracesocket import SocketElement, SocketStatus
 
 
 class ThreadWakeState(Enum):

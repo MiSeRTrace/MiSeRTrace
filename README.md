@@ -35,12 +35,14 @@ trace-cmd report -R -i <path to trace.dat> | grep -vEi "^cpu" | sed -E 's/,\s*/,
 
 - Pass the report and the initial setup file to the program with the IP of the gateway. This is generally the first IP of the docker network. For example if the IP of a service is 172.24.0.6, the gateway IP is usually 172.24.0.**1**
 ```shell
-cat <path to report> | python3 first-pass/main.py **\<path to pids.txt\>** **\<Gateway IP\>** [options]
+cat <path to report> | python3 src/generator.py -i **\<path to pids.txt\>** -g **\<Gateway IP\>** [options]
+```
+- for help
+```shell
+python3 src/generator.py --help
 ```
 
  #### Options for main.py
-- **-v** : Applicable to first pass, prints verbose first pass output
-- **-r** : Applicable to second pass, prints output in raw format
-- **-c** : Print Coloured output wherever possible (Does not apply in the case of raw 2nd pass output)
-
-
+- **-V** : Applicable to first pass, prints verbose first pass output
+- **-R** : Applicable to second pass, prints output in raw format
+- **-C** : Print Coloured output wherever possible (Does not apply in the case of raw 2nd pass output)
