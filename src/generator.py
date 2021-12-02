@@ -1,6 +1,5 @@
 import sys
 import argparse
-from enum import Enum
 from core.tracerecord import TraceRecord
 from core.traceprocessor import *
 
@@ -59,6 +58,7 @@ for line in sys.stdin:
         print("\n--------\n")
 
 traceProcessor.terminate()
+traceProcessor.serializeTraceData()
 print("Estimated number of requests: ", len(traceProcessor.traceGenesis))
 if args.dump:
     traceProcessor.dumpFirstPass(args.dump)

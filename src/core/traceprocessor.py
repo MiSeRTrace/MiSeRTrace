@@ -3,7 +3,6 @@ from core.threadpool import *
 from core.tracerecord import *
 from core.tracethread import Thread
 from core.threadstate import ForkThreadState, NetworkThreadState
-from core.globalstatemanager import GlobalStateManager
 from pprint import pprint
 import pickle
 
