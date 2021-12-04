@@ -57,7 +57,7 @@ class TraceProcessor:
                 )
 
     def dumpFirstPass(self, path: str):
-        with open(path + "/first-pass.pickle", "wb") as pickleDumpFile:
+        with open(path, "wb") as pickleDumpFile:
             pickle.dump(self, pickleDumpFile)
 
     def addTraceGenesis(self, traceID, destinationReference):

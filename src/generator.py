@@ -1,5 +1,7 @@
+from os import name
 import sys
 import argparse
+import subprocess
 from core.tracerecord import TraceRecord
 from core.traceprocessor import *
 
@@ -7,6 +9,7 @@ sys.setrecursionlimit(10000)
 
 # argument parser
 parser = argparse.ArgumentParser()
+parser.add_argument("-t", "--tracedat", type=str, help="pass the path/to/trace.dat")
 parser.add_argument("-i", "--init", type=str, help="pass the path/to/init.txt")
 parser.add_argument(
     "-g", "--gateway", type=str, help="pass the gateway ip.in.ipv4.format"
@@ -44,11 +47,18 @@ if colored:
 else:
     traceProcessor.colored = False
 
-for line in sys.stdin:
+traceReportProcess = subprocess.Popen(
+    "./reportgen.sh " + args.tracedat,
+    stdout=subprocess.PIPE,
+    shell=True,
+    executable="/bin/bash",
+)
+for lineBytes in iter(lambda: traceReportProcess.stdout.readline(), b""):
+    line = lineBytes.decode("utf-8")
     if printLines:
         print(lineNumber, end="")
         lineNumber += 1
-
+    # print("l" + line)
     record = TraceRecord(line)
     if not traceProcessor.consumeRecord(record):
         print("Record Validation Failed")
@@ -58,7 +68,6 @@ for line in sys.stdin:
         print("\n--------\n")
 
 traceProcessor.terminate()
-traceProcessor.serializeTraceData()
 print("Estimated number of requests: ", len(traceProcessor.traceGenesis))
 if args.dump:
     traceProcessor.dumpFirstPass(args.dump)
