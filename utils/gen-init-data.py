@@ -1,4 +1,7 @@
-import sys
+#!/usr/bin/python3
+import psutil
+import docker
+import argparse
 
 btScript = """
 #include <net/sock.h>
@@ -19,18 +22,9 @@ BEGIN
 tracepoint:tcp:tcp_probe
 /@pids[tid] == 1/
 {
-	$saddr = ntop((((struct sockaddr_in6 *)(args->saddr))->sin6_addr).in6_u.u6_addr8);
-	$daddr = ntop((((struct sockaddr_in6 *)(args->daddr))->sin6_addr).in6_u.u6_addr8);
-	printf("%s %d %llu %s ", comm, tid, nsecs, probe);	
-	printf("saddr=%s daddr=%s sport=%d dport=%d\\n", $saddr, $daddr, args->sport, args->dport);
-}
-
-tracepoint:tcp:tcp_probe
-/@pids[tid] == 1/
-{
 	$saddr = (args->saddr);
 	$daddr = (args->daddr);
-	printf("%s %d %llu %s", comm, tid, nsecs, probe);	
+	printf("KRout %s %d %llu %s ", comm, tid, nsecs, probe);	
 	printf("saddr=%d.%d.%d.%d ", $saddr[4], $saddr[5], $saddr[6], $saddr[7]);
 	printf("daddr=%d.%d.%d.%d ", $daddr[4], $daddr[5], $daddr[6], $daddr[7]);
 	printf("sport=%d dport=%d\\n", args->sport, args->dport);
@@ -42,7 +36,7 @@ tracepoint:tcp:tcp_rcv_space_adjust
 {
 	$saddr = ntop(args->saddr);
 	$daddr = ntop(args->daddr);
-	printf("%s %d %llu %s ", comm, tid, nsecs, probe);	
+	printf("KRout %s %d %llu %s ", comm, tid, nsecs, probe);	
 	printf("saddr=%s daddr=%s sport=%d dport=%d\\n", $saddr, $daddr, args->sport, args->dport);
 }
 
@@ -64,13 +58,13 @@ tracepoint:syscalls:sys_exit_readv,
 tracepoint:syscalls:sys_exit_read
 /@pids[tid] == 1/
 {
-    printf("%s %d %llu %s\\n", comm, tid, nsecs, probe);
+    printf("KRout %s %d %llu %s\\n", comm, tid, nsecs, probe);
 }
 
 tracepoint:sched:sched_process_exit
 /@pids[tid] == 1/
 {
-    printf("%s %d %llu %s pid=%d\\n", comm, tid, nsecs, probe, args->pid);
+    printf("KRout %s %d %llu %s pid=%d\\n", comm, tid, nsecs, probe, args->pid);
     @pids[args->pid]=0;
 }
 
@@ -78,7 +72,7 @@ tracepoint:sched:sched_process_fork
 /@pids[tid] == 1/
 {
     @pids[args->child_pid] = 1;
-    printf("%s %d %llu %s parent_pid=%d child_pid=%d\\n", comm, tid, nsecs, probe, args->parent_pid, args->child_pid);
+    printf("KRout %s %d %llu %s parent_pid=%d child_pid=%d\\n", comm, tid, nsecs, probe, args->parent_pid, args->child_pid);
 }
 
 kprobe:sock_sendmsg,
@@ -104,15 +98,64 @@ kprobe:____sys_sendmsg
 		$dport = $sk->sk_dport;
 		$rPid = (*((struct upid*)($sk->sk_peer_pid->numbers))).ns->pid_allocated ; 
 		$dport = ($dport >> 8) | (($dport << 8) & 0x00FF00);
-		printf("%s %d %llu %s ", comm, tid, nsecs, probe);	
+		printf("KRout %s %d %llu kprobe:tcp_sent ", comm, tid, nsecs);	
 	    printf("saddr=%s daddr=%s sport=%d dport=%d\\n",   $saddr, $daddr, $lport, $dport);
 	}
 }
+
 """
 
-init_pid = ""
-for i in sys.argv[1:]:
-    init_pid += "@pids[" + i + "]=1;\n\t"
+parser = argparse.ArgumentParser()
 
-btScript = btScript.replace("INIT_PID_MAP", init_pid)
-print(btScript)
+parser.add_argument("-n", "--network", type=str, help="pass docker_network_name")
+parser.add_argument("-i", "--init", type=str, help="pass path/to/initname.txt")
+parser.add_argument("-b", "--bpftrace", type=str, help="pass path/to/btfile.bt")
+
+args = parser.parse_args()
+
+if not args.network or not args.init or not args.bpftrace:
+    parser.print_help()
+    exit()
+
+dockerClient = docker.from_env()
+APIClient = docker.APIClient(base_url="unix://var/run/docker.sock")
+
+psTreeStore = []
+
+
+def buildPsList(container, store: list, network: str):
+    PID = APIClient.inspect_container(container.id)["State"]["Pid"]
+    currentProcess = psutil.Process(PID)
+    allProcesses = set(currentProcess.children(recursive=True) + [currentProcess])
+    allThreads = set()
+    for processPID in allProcesses:
+        allThreads |= set(int(i.id) for i in processPID.threads())
+        jsonElement = {
+            "ID": container.id,
+            "Name": container.name,
+            "IP": container.attrs["NetworkSettings"]["Networks"][network]["IPAddress"],
+            "PID": PID,
+            "PIDList": allThreads,
+        }
+    store.append(jsonElement)
+
+
+for container in dockerClient.networks.get(args.network).containers:
+    buildPsList(container, psTreeStore, args.network)
+
+initFile = open(args.init, "w")
+bpfTraceFile = open(args.bpftrace, "w")
+
+initPidStr = ""
+for elem in psTreeStore:
+    for pid in elem["PIDList"]:
+        print(pid, elem["Name"], elem["IP"], elem["ID"], sep="\t", file=initFile)
+        initPidStr += "@pids[" + str(pid) + "]=1;\n\t"
+
+btScript = btScript.replace("INIT_PID_MAP", initPidStr)
+print(btScript, file=bpfTraceFile)
+
+initFile.close()
+bpfTraceFile.close()
+
+print('Use Command : "BPFTRACE_MAP_KEYS_MAX=4194304 bpftrace ' + args.bpftrace + '"')
