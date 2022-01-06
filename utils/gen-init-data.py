@@ -24,20 +24,18 @@ tracepoint:tcp:tcp_probe
 {
 	$saddr = (args->saddr);
 	$daddr = (args->daddr);
-	printf("KRout %s %d %llu %s ", comm, tid, nsecs, probe);	
+	printf("%s %d %llu ours:%s sport=%d dport=%d ", comm, tid, nsecs, probe, args->sport, args->dport);
 	printf("saddr=%d.%d.%d.%d ", $saddr[4], $saddr[5], $saddr[6], $saddr[7]);
-	printf("daddr=%d.%d.%d.%d ", $daddr[4], $daddr[5], $daddr[6], $daddr[7]);
-	printf("sport=%d dport=%d\\n", args->sport, args->dport);
+	printf("daddr=%d.%d.%d.%d\\n", $daddr[4], $daddr[5], $daddr[6], $daddr[7]);
 }
-
 
 tracepoint:tcp:tcp_rcv_space_adjust
 /@pids[tid] == 1/
 {
 	$saddr = ntop(args->saddr);
 	$daddr = ntop(args->daddr);
-	printf("KRout %s %d %llu %s ", comm, tid, nsecs, probe);	
-	printf("saddr=%s daddr=%s sport=%d dport=%d\\n", $saddr, $daddr, args->sport, args->dport);
+	printf("%s %d %llu ours:%s ", comm, tid, nsecs, probe);	
+	printf("sport=%d dport=%d saddr=%s daddr=%s\\n", args->sport, args->dport, $saddr, $daddr);
 }
 
 tracepoint:syscalls:sys_enter_sendto,
@@ -58,13 +56,13 @@ tracepoint:syscalls:sys_exit_readv,
 tracepoint:syscalls:sys_exit_read
 /@pids[tid] == 1/
 {
-    printf("KRout %s %d %llu %s\\n", comm, tid, nsecs, probe);
+    printf("%s %d %llu ours:%s\\n", comm, tid, nsecs, probe);
 }
 
 tracepoint:sched:sched_process_exit
 /@pids[tid] == 1/
 {
-    printf("KRout %s %d %llu %s pid=%d\\n", comm, tid, nsecs, probe, args->pid);
+    printf("%s %d %llu ours:%s pid=%d\\n", comm, tid, nsecs, probe, args->pid);
     @pids[args->pid]=0;
 }
 
@@ -72,7 +70,7 @@ tracepoint:sched:sched_process_fork
 /@pids[tid] == 1/
 {
     @pids[args->child_pid] = 1;
-    printf("KRout %s %d %llu %s parent_pid=%d child_pid=%d\\n", comm, tid, nsecs, probe, args->parent_pid, args->child_pid);
+    printf("%s %d %llu ours:%s parent_pid=%d child_pid=%d\\n", comm, tid, nsecs, probe, args->parent_pid, args->child_pid);
 }
 
 kprobe:sock_sendmsg,
@@ -98,8 +96,8 @@ kprobe:____sys_sendmsg
 		$dport = $sk->sk_dport;
 		$rPid = (*((struct upid*)($sk->sk_peer_pid->numbers))).ns->pid_allocated ; 
 		$dport = ($dport >> 8) | (($dport << 8) & 0x00FF00);
-		printf("KRout %s %d %llu kprobe:tcp_sent ", comm, tid, nsecs);	
-	    printf("saddr=%s daddr=%s sport=%d dport=%d\\n",   $saddr, $daddr, $lport, $dport);
+		printf("%s %d %llu ours:kprobe:tcp_send ", comm, tid, nsecs);	
+	    printf("sport=%d dport=%d saddr=%s daddr=%s\\n", $lport, $dport, $saddr, $daddr);
 	}
 }
 

@@ -4,17 +4,6 @@ from core.threadstate import ForkThreadState, NetworkThreadState
 from core.tracesocket import SocketElement, SocketStatus
 
 
-class ThreadWakeState(Enum):
-    RUNNING = -1
-    WAKING = 128  # W
-    SLEEP = 1  # S
-    RUNNABLE = 256  # R
-    RUNNABLE_PLACEHOLDERS = 0  # R : Applicable only to Swappers, kworkers
-    SLEEP_UNINTERRPUTABLE = 2  # D
-    EXIT_ZOMBIE = 16  # Z
-    EXIT_DEAD = 32  # X
-
-
 class bcolors:
     PINK = "\033[95m"
     BLUE = "\033[94m"
@@ -27,14 +16,6 @@ class bcolors:
     UNDERLINE = "\033[4m"
     GETSOCK = "\033[38;5;175m"
     ADDSOCK = "\033[38;5;175m"
-
-
-class ThreadSchedState:
-    def __init__(
-        self, timeStamp: float = 0, wakeState: ThreadWakeState = ThreadWakeState.RUNNING
-    ):
-        self.wakeState = wakeState
-        self.timeStamp = timeStamp
 
 
 class SendSyscallState:
@@ -64,19 +45,11 @@ class RecvSyscallState:
 
 
 class Thread:
-    def __init__(
-        self,
-        pid: int,
-        container: str,
-        ip: str,
-        traceProcessor,
-        currentSchedState: ThreadSchedState = ThreadSchedState(),
-    ):
+    def __init__(self, pid: int, container: str, ip: str, traceProcessor):
         self.pid = pid
         self.container = container
         self.ip = ip
         self.traceProcessor = traceProcessor
-        self.currentSchedState: ThreadSchedState = currentSchedState
 
         self.forkThreadStates: list[ForkThreadState] = list()
         self.networkThreadStates: dict[tuple, NetworkThreadState] = dict()
@@ -112,12 +85,6 @@ class Thread:
            Key:Value of TraceID:State Object(STTIP, attributes)
         """
         self.tcpState = RecvSyscallState(0)
-
-    def setCurrentSchedState(
-        self, timeStamp: float = 0, wakeState: ThreadWakeState = ThreadWakeState.RUNNING
-    ):
-        self.currentSchedState.timeStamp = timeStamp
-        self.currentSchedState.wakeState = wakeState
 
     def addForkThreadState(self, forkThreadState: ForkThreadState):
         self.forkThreadStates.append(forkThreadState)

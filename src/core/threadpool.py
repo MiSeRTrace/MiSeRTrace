@@ -10,28 +10,12 @@ class ThreadPool:
     def processSchedEvents(self, record: TraceRecord):
         # print(len(self.activeThreadPool))
 
-        # sched_switch event: Changes the wake state of a thread
-        if record.event == "sched_switch":
-            prevThread: Thread = self.getThread(int(record.details["prev_pid"]))
-            nextThread: Thread = self.getThread(int(record.details["next_pid"]))
-            if prevThread:
-                prevThread.setCurrentSchedState(
-                    record.timeStamp, ThreadWakeState(int(record.details["prev_state"]))
-                )
-            if nextThread:
-                nextThread.setCurrentSchedState(
-                    record.timeStamp, ThreadWakeState.RUNNING
-                )
-
         # sched_process_exit: Event observed when a thread dies
-        elif record.event == "sched_process_exit":
+        if record.event == "sched_process_exit":
             dyingThread: Thread = self.getThread(record.pid)
             if dyingThread:
                 for forkState in dyingThread.forkThreadStates:
                     forkState.updateEndTime(record.timeStamp)
-                dyingThread.setCurrentSchedState(
-                    record.timeStamp, ThreadWakeState.EXIT_ZOMBIE
-                )
                 # EXIT_DEAD occurs once, on redis-server
                 self.killThread(dyingThread)
             else:
@@ -45,8 +29,7 @@ class ThreadPool:
             if self.traceProcessor.toPrint:
                 print(
                     "\033[95m",
-                    record.details["parent_comm"],
-                    "forked with Parent PID:",
+                    "Forking with Parent PID:",
                     record.details["parent_pid"],
                     "Child PID:",
                     record.details["child_pid"],
@@ -62,7 +45,6 @@ class ThreadPool:
                     parentThread.container,
                     parentThread.ip,
                     self.traceProcessor,
-                    ThreadSchedState(record.timeStamp, ThreadWakeState.WAKING),
                 )
                 # print(newThread.container)
                 # print(record.timeStamp)

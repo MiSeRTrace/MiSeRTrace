@@ -46,15 +46,7 @@ class TraceProcessor:
                 self.ipStore[
                     ",".join([str(hex(int(i)))[2:].zfill(2) for i in ip.split(".")])
                 ] = container
-                self.threadPool.addThread(
-                    Thread(
-                        pid,
-                        container,
-                        ip,
-                        self,
-                        ThreadSchedState(0, ThreadWakeState.WAKING),
-                    )
-                )
+                self.threadPool.addThread(Thread(pid, container, ip, self))
 
     def dumpFirstPass(self, path: str):
         with open(path, "wb") as pickleDumpFile:
