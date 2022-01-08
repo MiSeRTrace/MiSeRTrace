@@ -24,8 +24,8 @@ tracepoint:tcp:tcp_probe
 {
 	$saddr = (args->saddr);
 	$daddr = (args->daddr);
-	printf("%s %d %llu ours:%s sport=%d dport=%d ", comm, tid, nsecs, probe, args->sport, args->dport);
-	printf("saddr=%d.%d.%d.%d ", $saddr[4], $saddr[5], $saddr[6], $saddr[7]);
+	printf("%s %d %llu %d ours:%s ", comm, tid, nsecs, cpu, probe);
+	printf("sport=%d dport=%d saddr=%d.%d.%d.%d ",  args->sport, args->dport, $saddr[4], $saddr[5], $saddr[6], $saddr[7]);
 	printf("daddr=%d.%d.%d.%d\\n", $daddr[4], $daddr[5], $daddr[6], $daddr[7]);
 }
 
@@ -34,7 +34,7 @@ tracepoint:tcp:tcp_rcv_space_adjust
 {
 	$saddr = ntop(args->saddr);
 	$daddr = ntop(args->daddr);
-	printf("%s %d %llu ours:%s ", comm, tid, nsecs, probe);	
+	printf("%s %d %llu %d ours:%s ", comm, tid, nsecs, cpu, probe);	
 	printf("sport=%d dport=%d saddr=%s daddr=%s\\n", args->sport, args->dport, $saddr, $daddr);
 }
 
@@ -56,13 +56,13 @@ tracepoint:syscalls:sys_exit_readv,
 tracepoint:syscalls:sys_exit_read
 /@pids[tid] == 1/
 {
-    printf("%s %d %llu ours:%s\\n", comm, tid, nsecs, probe);
+    printf("%s %d %llu %d ours:%s\\n", comm, tid, nsecs, cpu, probe);
 }
 
 tracepoint:sched:sched_process_exit
 /@pids[tid] == 1/
 {
-    printf("%s %d %llu ours:%s pid=%d\\n", comm, tid, nsecs, probe, args->pid);
+    printf("%s %d %llu %d ours:%s pid=%d\\n", comm, tid, nsecs, cpu, probe, args->pid);
     @pids[args->pid]=0;
 }
 
@@ -70,7 +70,8 @@ tracepoint:sched:sched_process_fork
 /@pids[tid] == 1/
 {
     @pids[args->child_pid] = 1;
-    printf("%s %d %llu ours:%s parent_pid=%d child_pid=%d\\n", comm, tid, nsecs, probe, args->parent_pid, args->child_pid);
+    printf("%s %d %llu %d ours:%s ", comm, tid, nsecs, cpu, probe);
+	printf("parent_pid=%d child_pid=%d\\n",args->parent_pid, args->child_pid);
 }
 
 kprobe:sock_sendmsg,
@@ -92,11 +93,11 @@ kprobe:____sys_sendmsg
 			$daddr = ntop($sk->__sk_common.skc_v6_daddr.in6_u.u6_addr8);
 			$saddr = ntop($sk->__sk_common.skc_v6_rcv_saddr.in6_u.u6_addr8);	
 		}
-		$lport = $sk->sk_num;
-		$dport = $sk->sk_dport;
+		$lport = $sk->__sk_common.skc_num;
+		$dport = $sk->__sk_common.skc_dport;
 		$rPid = (*((struct upid*)($sk->sk_peer_pid->numbers))).ns->pid_allocated ; 
 		$dport = ($dport >> 8) | (($dport << 8) & 0x00FF00);
-		printf("%s %d %llu ours:kprobe:tcp_send ", comm, tid, nsecs);	
+		printf("%s %d %llu %d ours:kprobe:tcp_send ", comm, tid, nsecs, cpu);	
 	    printf("sport=%d dport=%d saddr=%s daddr=%s\\n", $lport, $dport, $saddr, $daddr);
 	}
 }
