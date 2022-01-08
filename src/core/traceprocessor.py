@@ -28,9 +28,7 @@ class TraceProcessor:
         self.traceID = 0
         self.traceGenesis = dict()
         self.lastTimeStamp = 0
-        self.gatewayIP = ",".join(
-            [str(hex(int(i)))[2:].zfill(2) for i in gatewayIP.split(".")]
-        )
+        self.gatewayIP = gatewayIP
         # self.globalStateManager: GlobalStateManager = GlobalStateManager(
         #     gsClasses=gsClasses)
         self.ipStore = dict()
@@ -43,9 +41,7 @@ class TraceProcessor:
                 pid, container, ip, _ = line.strip().split()
                 pid = int(pid)
                 # print(pid)
-                self.ipStore[
-                    ",".join([str(hex(int(i)))[2:].zfill(2) for i in ip.split(".")])
-                ] = container
+                self.ipStore[ip] = container
                 self.threadPool.addThread(Thread(pid, container, ip, self))
 
     def dumpFirstPass(self, path: str):

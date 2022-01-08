@@ -47,14 +47,9 @@ if colored:
 else:
     traceProcessor.colored = False
 
-traceReportProcess = subprocess.Popen(
-    "./reportgen.sh " + args.tracedat,
-    stdout=subprocess.PIPE,
-    shell=True,
-    executable="/bin/bash",
-)
-for lineBytes in iter(lambda: traceReportProcess.stdout.readline(), b""):
-    line = lineBytes.decode("utf-8")
+readFile = open(args.tracedat, "r")
+
+for line in readFile:
     if printLines:
         print(lineNumber, end="")
         lineNumber += 1

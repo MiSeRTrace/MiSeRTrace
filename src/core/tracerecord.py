@@ -9,6 +9,7 @@ class TraceRecord:
             self.cpu = int(lineContents[3])
             self.probe = lineContents[4].split(":")
             if self.probe[0] == "ours":
+                self.isImplementation = True
                 self.event = self.probe[-1]
                 self.details = dict()
                 if len(lineContents) > 5:
@@ -16,6 +17,7 @@ class TraceRecord:
                         attribute, value = content.split("=")
                         self.details[attribute] = value
             else:
+                self.isImplementation = False
                 self.record = line
         except:
             print("Error in parsing: ", line)
