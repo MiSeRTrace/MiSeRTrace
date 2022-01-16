@@ -3,12 +3,14 @@ import sys
 import argparse
 
 # import sys.core.threadstate as threadState
-from render.renderdag import RenderDag
+from render.rendercustom import RenderCustom
 
 parser = argparse.ArgumentParser()
 parser.add_argument(
     "-i", "--input", type=str, help="pass the path/to/traceProcessor.pickle"
 )
+parser.add_argument("-r", "--range", type=str, help="pass the range")
+parser.add_argument("-t", "--trace", type=str, help="pass the path/to/trace.txt")
 
 parser.add_argument("-R", action="store_true", help="to print output in raw format")
 parser.add_argument(
@@ -17,6 +19,6 @@ parser.add_argument(
 args = parser.parse_args()
 
 pickleDumpFile = open(args.input, "rb")
-renderObject = RenderDag(pickleDumpFile)
+renderObject = RenderCustom(pickleDumpFile, args=args)
 pickleDumpFile.close()
 renderObject.render(args=args)

@@ -4,7 +4,7 @@ import pickle
 
 
 class RenderInterface:
-    def __init__(self, fileObject: TextIOWrapper):
+    def __init__(self, fileObject: TextIOWrapper, **argv):
         self.traceProcessor: TraceProcessor = pickle.load(fileObject)
 
     def render(self, **argv):
