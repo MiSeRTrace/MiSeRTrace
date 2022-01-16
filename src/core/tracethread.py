@@ -25,6 +25,7 @@ class SendSyscallState:
         self.request = True
         self.response = False
         self.startTime = startTime
+        self.updateEndTimeList: list[NetworkThreadState] = list()
 
     # def setInetSockSetStateObserved(self):
     #     self.inetSockSetStateObserved = True
@@ -144,6 +145,9 @@ class Thread:
                             self.intermediateThreadStates[key].updateEndTime(
                                 record.timeStamp
                             )
+                            self.tcpState.updateEndTimeList.append(
+                                self.intermediateThreadStates[key]
+                            )
                         for key in list(
                             filter(
                                 lambda key: key[0] == None,
@@ -152,6 +156,9 @@ class Thread:
                         ):
                             self.intermediateThreadStates[key].updateEndTime(
                                 record.timeStamp
+                            )
+                            self.tcpState.updateEndTimeList.append(
+                                self.intermediateThreadStates[key]
                             )
                         if self.traceProcessor.toPrint:
                             if self.traceProcessor.colored:
@@ -296,6 +303,9 @@ class Thread:
                                             networkStateKey
                                         ]
                                         threadState.updateEndTime(record.timeStamp)
+                                        self.tcpState.updateEndTimeList.append(
+                                            threadState
+                                        )
 
                                 threadStateToPop = list()
                                 for networkStateKey in self.networkThreadStates:
@@ -309,6 +319,9 @@ class Thread:
                                         ]
                                         threadState.setResponseSentOnce()
                                         threadState.updateEndTime(record.timeStamp)
+                                        self.tcpState.updateEndTimeList.append(
+                                            threadState
+                                        )
                                         if threadState.isNewSrcObserved():
                                             self.intermediateThreadStates[
                                                 networkStateKey
@@ -323,6 +336,8 @@ class Thread:
                     "sys_exit_sendmsg",
                     "sys_exit_writev",
                 ]:
+                    for threadState in self.tcpState.updateEndTimeList:
+                        threadState.updateEndTime(record.timeStamp)
                     del self.tcpState
                     self.tcpState = None
 

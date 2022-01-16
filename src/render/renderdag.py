@@ -59,6 +59,7 @@ class RenderDag(RenderInterface):
                             threadStateObject.endTimeStamp,
                         )
                     ],
+                    set(),
                 )
         return traceData
 
@@ -68,15 +69,21 @@ class RenderDag(RenderInterface):
         parentStateStartTimeStamp: float,
         destinationThreadStates: "dict[int, list[NetworkThreadState or ForkThreadState]]",
         container: "dict[tuple, dict]",
+        visited: set,
     ):
-        for threadStateObject in destinationThreadStates[traceId]:
-            if threadStateObject.startTimeStamp >= parentStateStartTimeStamp:
+        tempContainerList: list = list()
+        for threadStateObject in destinationThreadStates[traceId][::-1]:
+            if (
+                threadStateObject not in visited
+                and threadStateObject.startTimeStamp >= parentStateStartTimeStamp
+            ):
+                visited.add(threadStateObject)
                 if type(threadStateObject) == ForkThreadState:
                     state = "ForkThreadState"
                 else:
                     state = "NetworkThreadState"
 
-                container[
+                element = (
                     (
                         state,
                         threadStateObject.handlingThread.pid,
@@ -84,25 +91,22 @@ class RenderDag(RenderInterface):
                         threadStateObject.handlingThread.ip,
                         threadStateObject.startTimeStamp,
                         threadStateObject.endTimeStamp,
-                    )
-                ] = dict()
+                    ),
+                    dict(),
+                )
+                tempContainerList.insert(0, element)
+
                 if traceId in threadStateObject.handlingThread.destinationThreadStates:
 
                     self._recursiveFillTraceData(
                         traceId,
                         threadStateObject.startTimeStamp,
                         threadStateObject.handlingThread.destinationThreadStates,
-                        container[
-                            (
-                                state,
-                                threadStateObject.handlingThread.pid,
-                                threadStateObject.handlingThread.container,
-                                threadStateObject.handlingThread.ip,
-                                threadStateObject.startTimeStamp,
-                                threadStateObject.endTimeStamp,
-                            )
-                        ],
+                        element[1],
+                        visited,
                     )
+        for element in tempContainerList:
+            container[element[0]] = element[1]
 
     def recPrintData(self, traceElem, colored: bool, depth: int):
         for span in traceElem:
@@ -124,7 +128,51 @@ class RenderDag(RenderInterface):
                     bcolors.GREEN,
                     span[4],
                     bcolors.ENDC,
-                    "to",
+                    "to",  # def _recursiveFillTraceData(
+                    #     self,
+                    #     traceId: int,
+                    #     parentStateStartTimeStamp: float,
+                    #     destinationThreadStates: "dict[int, list[NetworkThreadState or ForkThreadState]]",
+                    #     container: "dict[tuple, dict]",
+                    #     visited: set,
+                    # ):
+                    #     for threadStateObject in destinationThreadStates[traceId]:
+                    #         if (
+                    #             threadStateObject.startTimeStamp >= parentStateStartTimeStamp
+                    #             and threadStateObject not in visited
+                    #         ):
+                    #             visited.add(threadStateObject)
+                    #             if type(threadStateObject) == ForkThreadState:
+                    #                 state = "ForkThreadState"
+                    #             else:
+                    #                 state = "NetworkThreadState"
+                    #             container[
+                    #                 (
+                    #                     state,
+                    #                     threadStateObject.handlingThread.pid,
+                    #                     threadStateObject.handlingThread.container,
+                    #                     threadStateObject.handlingThread.ip,
+                    #                     threadStateObject.startTimeStamp,
+                    #                     threadStateObject.endTimeStamp,
+                    #                 )
+                    #             ] = dict()
+                    #             if traceId in threadStateObject.handlingThread.destinationThreadStates:
+                    #                 self._recursiveFillTraceData(
+                    #                     traceId,
+                    #                     threadStateObject.startTimeStamp,
+                    #                     threadStateObject.handlingThread.destinationThreadStates,
+                    #                     container[
+                    #                         (
+                    #                             state,
+                    #                             threadStateObject.handlingThread.pid,
+                    #                             threadStateObject.handlingThread.container,
+                    #                             threadStateObject.handlingThread.ip,
+                    #                             threadStateObject.startTimeStamp,
+                    #                             threadStateObject.endTimeStamp,
+                    #                         )
+                    #                     ],
+                    #                     visited,
+                    #                 )
                     bcolors.RED,
                     span[5],
                 )

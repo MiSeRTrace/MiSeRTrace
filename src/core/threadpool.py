@@ -21,9 +21,9 @@ class ThreadPool:
                     self.killThread(dyingThread)
                 else:
                     print(
-                        f"ERROR: Thread {record.pid} not in active pool, cannot be moved to dead pool"
+                        f"WARNING: Thread {record.pid} not in active pool, cannot be moved to dead pool"
                     )
-                    exit()
+                    # exit()
 
             # sched_process_fork: Event observed when a thread forks
             elif record.event == "sched_process_fork":
@@ -94,9 +94,9 @@ class ThreadPool:
                     # )
                 else:
                     print(
-                        "ERROR: Parent thread not in active thread pool while forking"
+                        "WARNING: Parent thread not in active thread pool while forking"
                     )
-                    exit()
+                    # exit()
 
     def freeActiveThreadPool(self):
         for key in list(self.activeThreadPool):
