@@ -9,12 +9,22 @@ sys.setrecursionlimit(10000)
 
 # argument parser
 parser = argparse.ArgumentParser()
-parser.add_argument("-t", "--tracedat", type=str, help="pass the path/to/trace.dat")
-parser.add_argument("-i", "--init", type=str, help="pass the path/to/init.txt")
 parser.add_argument(
-    "-g", "--gateway", type=str, help="pass the gateway ip.in.ipv4.format"
+    "-t", "--tracedat", type=str, help="pass the path/to/trace.dat", required=True
 )
-parser.add_argument("-d", "--dump", type=str, help="pass the dump/path/directory")
+parser.add_argument(
+    "-i", "--init", type=str, help="pass the path/to/init.txt", required=True
+)
+parser.add_argument(
+    "-g",
+    "--gateway",
+    type=str,
+    help="pass the gateway ip.in.ipv4.format",
+    required=True,
+)
+parser.add_argument(
+    "-d", "--dump", type=str, help="pass the dump/path/directory", required=True
+)
 parser.add_argument(
     "-L", action="store_true", help="to print line numbers as records are consumed"
 )

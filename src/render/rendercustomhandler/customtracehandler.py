@@ -8,8 +8,8 @@ class CustomTraceHandler:
         self.traceProcessor = traceProcessor
         self.customInit()
 
-    def retrieveData(self) -> str:
-        return json.dumps(self.customRetrieveData())
+    def retrieveData(self) -> dict:
+        return self.customRetrieveData()
 
     def consumeRecord(self, record: TraceRecord):
         self.customConsumeRecord(record)

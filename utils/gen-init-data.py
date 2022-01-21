@@ -106,9 +106,15 @@ kprobe:____sys_sendmsg
 
 parser = argparse.ArgumentParser()
 
-parser.add_argument("-n", "--network", type=str, help="pass docker_network_name")
-parser.add_argument("-i", "--init", type=str, help="pass path/to/initname.txt")
-parser.add_argument("-b", "--bpftrace", type=str, help="pass path/to/btfile.bt")
+parser.add_argument(
+    "-n", "--network", type=str, help="pass docker_network_name", required=True
+)
+parser.add_argument(
+    "-i", "--init", type=str, help="pass path/to/initname.txt", required=True
+)
+parser.add_argument(
+    "-b", "--bpftrace", type=str, help="pass path/to/btfile.bt", required=True
+)
 
 args = parser.parse_args()
 

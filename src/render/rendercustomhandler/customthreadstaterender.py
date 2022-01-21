@@ -15,15 +15,18 @@ class CustomThreadStateRender:
 
     def consumeRecord(self, record: TraceRecord):
         if (
-            self.threadState.handlingThread.pid == record.pid
+            (
+                self.threadState.handlingThread.pid == record.pid
+                or self.customRecordValid(record)
+            )
             and self.threadState.startTimeStamp <= record.timeStamp
             and self.threadState.endTimeStamp >= record.timeStamp
         ):
             self.traceHandler.consumeRecord(record)
             self.customConsumeRecord(record)
 
-    def retrieveData(self) -> str:
-        return json.dumps(self.customRetrieveData())
+    def retrieveData(self) -> dict:
+        return self.customRetrieveData()
 
     def customInit(self):
         self.c = 0
@@ -33,3 +36,6 @@ class CustomThreadStateRender:
 
     def customRetrieveData(self) -> dict:
         return {"count": self.c}
+
+    def customRecordValid(self, record: TraceRecord) -> bool:
+        return False  # Return False if no custom condition is added

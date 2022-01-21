@@ -1,6 +1,7 @@
 from io import TextIOWrapper
 from render.renderinterface import RenderInterface
 from core.threadstate import ForkThreadState, NetworkThreadState
+import json
 
 
 class bcolors:
@@ -18,47 +19,46 @@ class bcolors:
 
 
 class RenderDag(RenderInterface):
-    def __init__(self, fileObject: TextIOWrapper):
+    def __init__(self, fileObject: TextIOWrapper, **argv):
         super().__init__(fileObject)
+        self.outputFile = argv["outputFile"]
 
     def render(self, **argv):
         serializedData = self.serializeTraceData()
         if argv["args"].R:
-            print(serializedData)
+            if argv["args"].F:
+                print(json.dumps(serializedData, indent=4), file=self.outputFile)
+            else:
+                print(json.dumps(serializedData), file=self.outputFile)
         else:
             self.printData(serializedData, argv["args"].C)
 
     def serializeTraceData(self):
-        traceData: dict[tuple, dict] = dict()
+        traceData = dict()
 
         for traceId in self.traceProcessor.traceGenesis:
             threadStateObject = self.traceProcessor.traceGenesis[traceId]
-            traceData[
-                (
-                    traceId,
-                    threadStateObject.handlingThread.pid,
-                    threadStateObject.handlingThread.container,
-                    threadStateObject.handlingThread.ip,
-                    threadStateObject.startTimeStamp,
-                    threadStateObject.endTimeStamp,
-                )
-            ] = dict()
+            traceData[traceId] = {
+                "TraceID": traceId,
+                "ThreadState": {
+                    "State": "ForkThreadState"
+                    if type(threadStateObject) == ForkThreadState
+                    else "NetworkThreadState",
+                    "PID": threadStateObject.handlingThread.pid,
+                    "Container": threadStateObject.handlingThread.container,
+                    "IP": threadStateObject.handlingThread.ip,
+                    "StartTime": threadStateObject.startTimeStamp,
+                    "EndTime": threadStateObject.endTimeStamp,
+                },
+                "Children": list(),
+            }
 
             if traceId in threadStateObject.handlingThread.destinationThreadStates:
                 self._recursiveFillTraceData(
                     traceId,
                     threadStateObject.startTimeStamp,
                     threadStateObject.handlingThread.destinationThreadStates,
-                    traceData[
-                        (
-                            traceId,
-                            threadStateObject.handlingThread.pid,
-                            threadStateObject.handlingThread.container,
-                            threadStateObject.handlingThread.ip,
-                            threadStateObject.startTimeStamp,
-                            threadStateObject.endTimeStamp,
-                        )
-                    ],
+                    traceData[traceId]["Children"],
                     set(),
                 )
         return traceData
@@ -68,45 +68,73 @@ class RenderDag(RenderInterface):
         traceId: int,
         parentStateStartTimeStamp: float,
         destinationThreadStates: "dict[int, list[NetworkThreadState or ForkThreadState]]",
-        container: "dict[tuple, dict]",
+        container: list,
         visited: set,
     ):
-        tempContainerList: list = list()
         for threadStateObject in destinationThreadStates[traceId][::-1]:
             if (
                 threadStateObject not in visited
                 and threadStateObject.startTimeStamp >= parentStateStartTimeStamp
             ):
                 visited.add(threadStateObject)
-                if type(threadStateObject) == ForkThreadState:
-                    state = "ForkThreadState"
-                else:
-                    state = "NetworkThreadState"
-
-                element = (
-                    (
-                        state,
-                        threadStateObject.handlingThread.pid,
-                        threadStateObject.handlingThread.container,
-                        threadStateObject.handlingThread.ip,
-                        threadStateObject.startTimeStamp,
-                        threadStateObject.endTimeStamp,
-                    ),
-                    dict(),
-                )
-                tempContainerList.insert(0, element)
-
+                element = {
+                    "ThreadState": {
+                        "State": "ForkThreadState"
+                        if type(threadStateObject) == ForkThreadState
+                        else "NetworkThreadState",
+                        "PID": threadStateObject.handlingThread.pid,
+                        "Container": threadStateObject.handlingThread.container,
+                        "IP": threadStateObject.handlingThread.ip,
+                        "StartTime": threadStateObject.startTimeStamp,
+                        "EndTime": threadStateObject.endTimeStamp,
+                    },
+                    "Children": list(),
+                }
+                container.insert(0, element)
                 if traceId in threadStateObject.handlingThread.destinationThreadStates:
-
                     self._recursiveFillTraceData(
                         traceId,
                         threadStateObject.startTimeStamp,
                         threadStateObject.handlingThread.destinationThreadStates,
-                        element[1],
+                        element["Children"],
                         visited,
                     )
-        for element in tempContainerList:
-            container[element[0]] = element[1]
+
+    def printData(self, serializedData, colored: bool):
+        for _, traceDetails in serializedData.items():
+            if colored:
+                print(
+                    bcolors.PINK,
+                    traceDetails["TraceID"],
+                    bcolors.BLUE,
+                    bcolors.BOLD,
+                    traceDetails["ThreadState"]["Container"],
+                    bcolors.ENDC,
+                    "with PID",
+                    bcolors.CYAN,
+                    traceDetails["ThreadState"]["PID"],
+                    bcolors.ENDC,
+                    "at time",
+                    bcolors.GREEN,
+                    traceDetails["ThreadState"]["StartTime"],
+                    "to",
+                    bcolors.RED,
+                    traceDetails["ThreadState"]["EndTime"],
+                    file=self.outputFile,
+                )
+            else:
+                print(
+                    traceDetails["TraceID"],
+                    traceDetails["ThreadState"]["Container"],
+                    "with PID",
+                    traceDetails["ThreadState"]["PID"],
+                    "at time",
+                    traceDetails["ThreadState"]["StartTime"],
+                    "to",
+                    traceDetails["ThreadState"]["EndTime"],
+                    file=self.outputFile,
+                )
+            self.recPrintData(traceDetails["Children"], colored, 1)
 
     def recPrintData(self, traceElem, colored: bool, depth: int):
         for span in traceElem:
@@ -115,111 +143,38 @@ class RenderDag(RenderInterface):
                     depth * "\t",
                     bcolors.BOLD,
                     bcolors.PINK,
-                    bcolors.BOLD + bcolors.YELLOW + span[0] + bcolors.ENDC,
+                    bcolors.BOLD
+                    + bcolors.YELLOW
+                    + span["ThreadState"]["State"]
+                    + bcolors.ENDC,
                     bcolors.BOLD,
                     bcolors.BLUE,
-                    span[2],
+                    span["ThreadState"]["Container"],
                     bcolors.ENDC,
                     "with PID",
                     bcolors.CYAN,
-                    span[1],
+                    span["ThreadState"]["PID"],
                     bcolors.ENDC,
                     "at time",
                     bcolors.GREEN,
-                    span[4],
+                    span["ThreadState"]["StartTime"],
                     bcolors.ENDC,
-                    "to",  # def _recursiveFillTraceData(
-                    #     self,
-                    #     traceId: int,
-                    #     parentStateStartTimeStamp: float,
-                    #     destinationThreadStates: "dict[int, list[NetworkThreadState or ForkThreadState]]",
-                    #     container: "dict[tuple, dict]",
-                    #     visited: set,
-                    # ):
-                    #     for threadStateObject in destinationThreadStates[traceId]:
-                    #         if (
-                    #             threadStateObject.startTimeStamp >= parentStateStartTimeStamp
-                    #             and threadStateObject not in visited
-                    #         ):
-                    #             visited.add(threadStateObject)
-                    #             if type(threadStateObject) == ForkThreadState:
-                    #                 state = "ForkThreadState"
-                    #             else:
-                    #                 state = "NetworkThreadState"
-                    #             container[
-                    #                 (
-                    #                     state,
-                    #                     threadStateObject.handlingThread.pid,
-                    #                     threadStateObject.handlingThread.container,
-                    #                     threadStateObject.handlingThread.ip,
-                    #                     threadStateObject.startTimeStamp,
-                    #                     threadStateObject.endTimeStamp,
-                    #                 )
-                    #             ] = dict()
-                    #             if traceId in threadStateObject.handlingThread.destinationThreadStates:
-                    #                 self._recursiveFillTraceData(
-                    #                     traceId,
-                    #                     threadStateObject.startTimeStamp,
-                    #                     threadStateObject.handlingThread.destinationThreadStates,
-                    #                     container[
-                    #                         (
-                    #                             state,
-                    #                             threadStateObject.handlingThread.pid,
-                    #                             threadStateObject.handlingThread.container,
-                    #                             threadStateObject.handlingThread.ip,
-                    #                             threadStateObject.startTimeStamp,
-                    #                             threadStateObject.endTimeStamp,
-                    #                         )
-                    #                     ],
-                    #                     visited,
-                    #                 )
+                    "to",
                     bcolors.RED,
-                    span[5],
+                    span["ThreadState"]["EndTime"],
+                    file=self.outputFile,
                 )
             else:
                 print(
                     depth * "\t",
-                    span[0],
-                    span[2],
+                    span["ThreadState"]["State"],
+                    span["ThreadState"]["Container"],
                     "with PID",
-                    span[1],
+                    span["ThreadState"]["PID"],
                     "at time",
-                    span[4],
+                    span["ThreadState"]["StartTime"],
                     "to",
-                    span[5],
+                    span["ThreadState"]["EndTime"],
+                    file=self.outputFile,
                 )
-            self.recPrintData(traceElem[span], colored, depth + 1)
-
-    def printData(self, serializedData, colored: bool):
-        for trace in serializedData:
-            if colored:
-                print(
-                    bcolors.PINK,
-                    trace[0],
-                    bcolors.BLUE,
-                    bcolors.BOLD,
-                    trace[2],
-                    bcolors.ENDC,
-                    "with PID",
-                    bcolors.CYAN,
-                    trace[1],
-                    bcolors.ENDC,
-                    "at time",
-                    bcolors.GREEN,
-                    trace[4],
-                    "to",
-                    bcolors.RED,
-                    trace[5],
-                )
-            else:
-                print(
-                    trace[0],
-                    trace[2],
-                    "with PID",
-                    trace[1],
-                    "at time",
-                    trace[4],
-                    "to",
-                    trace[5],
-                )
-            self.recPrintData(serializedData[trace], colored, 1)
+            self.recPrintData(span["Children"], colored, depth + 1)
