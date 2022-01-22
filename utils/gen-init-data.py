@@ -110,17 +110,23 @@ parser.add_argument(
     "-n", "--network", type=str, help="pass docker_network_name", required=True
 )
 parser.add_argument(
-    "-i", "--init", type=str, help="pass path/to/initname.txt", required=True
+    "-ib",
+    "--inputbt",
+    type=str,
+    help="pass path/to/customInputBtFile.bt, ensure conditions handled",
 )
 parser.add_argument(
-    "-b", "--bpftrace", type=str, help="pass path/to/btfile.bt", required=True
+    "-oi",
+    "--outputinit",
+    type=str,
+    help="pass path/to/outputInitFile.txt",
+    required=True,
+)
+parser.add_argument(
+    "-ob", "--outputbt", type=str, help="pass path/to/outputBtFile.bt", required=True
 )
 
 args = parser.parse_args()
-
-if not args.network or not args.init or not args.bpftrace:
-    parser.print_help()
-    exit()
 
 dockerClient = docker.from_env()
 APIClient = docker.APIClient(base_url="unix://var/run/docker.sock")
@@ -148,8 +154,8 @@ def buildPsList(container, store: list, network: str):
 for container in dockerClient.networks.get(args.network).containers:
     buildPsList(container, psTreeStore, args.network)
 
-initFile = open(args.init, "w")
-bpfTraceFile = open(args.bpftrace, "w")
+initFile = open(args.outputinit, "w")
+bpfTraceFile = open(args.outputbt, "w")
 
 initPidStr = ""
 for elem in psTreeStore:
@@ -160,7 +166,21 @@ for elem in psTreeStore:
 btScript = btScript.replace("INIT_PID_MAP", initPidStr)
 print(btScript, file=bpfTraceFile)
 
+if args.inputbt:
+    with open(args.inputbt, "r") as inputFile:
+        for line in inputFile:
+            print(line, file=bpfTraceFile, end="")
+
 initFile.close()
 bpfTraceFile.close()
 
-print('Use Command : "BPFTRACE_MAP_KEYS_MAX=4194304 bpftrace ' + args.bpftrace + '"')
+print(
+    'Use Command : "BPFTRACE_PERF_RB_PAGES=<Buffer Size in Pages> BPFTRACE_MAP_KEYS_MAX=<Maximum number of Unique Threads that can be traced> BPFTRACE_LOG_SIZE=<Max Log size to store .bt> bpftrace '
+    + args.outputbt
+    + '"'
+)
+print(
+    'eg: "BPFTRACE_PERF_RB_PAGES=131072 BPFTRACE_MAP_KEYS_MAX=4194304 BPFTRACE_LOG_SIZE=750000000 bpftrace '
+    + args.outputbt
+    + '"'
+)

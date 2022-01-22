@@ -18,7 +18,7 @@ class TraceRecord:
                         self.details[attribute] = value
             else:
                 self.isImplementation = False
-                self.record = line
+            self.content = line
         except:
             print("Error in parsing: ", line)
             exit()

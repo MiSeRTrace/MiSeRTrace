@@ -202,10 +202,11 @@ class TraceProcessor:
     def consumeRecord(self, record: TraceRecord):
         if not self._validRecord(record):
             return False
-        if "sched" in record.event:
-            self.threadPool.processSchedEvents(record)
-        else:
-            self.processEvents(record)
+        if record.isImplementation:
+            if "sched" in record.event:
+                self.threadPool.processSchedEvents(record)
+            else:
+                self.processEvents(record)
         self.lastTimeStamp = record.timeStamp
         return True
 
