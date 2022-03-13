@@ -2,6 +2,7 @@
 import psutil
 import docker
 import argparse
+import csv
 
 btScript = """
 #include <net/sock.h>
@@ -24,9 +25,9 @@ tracepoint:tcp:tcp_probe
 {
 	$saddr = (args->saddr);
 	$daddr = (args->daddr);
-	printf("%s %d %llu %d ours:%s ", comm, tid, nsecs, cpu, probe);
-	printf("sport=%d dport=%d saddr=%d.%d.%d.%d ",  args->sport, args->dport, $saddr[4], $saddr[5], $saddr[6], $saddr[7]);
-	printf("daddr=%d.%d.%d.%d\\n", $daddr[4], $daddr[5], $daddr[6], $daddr[7]);
+	printf("\\"%s\\"|\\"%d\\"|\\"%llu\\"|\\"%d\\"|\\"MT:%s\\"|", comm, tid, nsecs, cpu, probe);
+	printf("\\"sport=%d dport=%d saddr=%d.%d.%d.%d ",  args->sport, args->dport, $saddr[4], $saddr[5], $saddr[6], $saddr[7]);
+	printf("daddr=%d.%d.%d.%d\\"\\n", $daddr[4], $daddr[5], $daddr[6], $daddr[7]);
 }
 
 tracepoint:tcp:tcp_rcv_space_adjust
@@ -34,8 +35,8 @@ tracepoint:tcp:tcp_rcv_space_adjust
 {
 	$saddr = ntop(args->saddr);
 	$daddr = ntop(args->daddr);
-	printf("%s %d %llu %d ours:%s ", comm, tid, nsecs, cpu, probe);	
-	printf("sport=%d dport=%d saddr=%s daddr=%s\\n", args->sport, args->dport, $saddr, $daddr);
+	printf("\\"%s\\"|\\"%d\\"|\\"%llu\\"|\\"%d\\"|\\"MT:%s\\"|", comm, tid, nsecs, cpu, probe);	
+	printf("\\"sport=%d dport=%d saddr=%s daddr=%s\\"\\n", args->sport, args->dport, $saddr, $daddr);
 }
 
 tracepoint:syscalls:sys_enter_sendto,
@@ -56,13 +57,13 @@ tracepoint:syscalls:sys_exit_readv,
 tracepoint:syscalls:sys_exit_read
 /@pids[tid] == 1/
 {
-    printf("%s %d %llu %d ours:%s\\n", comm, tid, nsecs, cpu, probe);
+    printf("\\"%s\\"|\\"%d\\"|\\"%llu\\"|\\"%d\\"|\\"MT:%s\\"\\n", comm, tid, nsecs, cpu, probe);
 }
 
 tracepoint:sched:sched_process_exit
 /@pids[tid] == 1/
 {
-    printf("%s %d %llu %d ours:%s pid=%d\\n", comm, tid, nsecs, cpu, probe, args->pid);
+    printf("\\"%s\\"|\\"%d\\"|\\"%llu\\"|\\"%d\\"|\\"MT:%s\\"pid=%d\\"\\n", comm, tid, nsecs, cpu, probe, args->pid);
     @pids[args->pid]=0;
 }
 
@@ -70,8 +71,8 @@ tracepoint:sched:sched_process_fork
 /@pids[tid] == 1/
 {
     @pids[args->child_pid] = 1;
-    printf("%s %d %llu %d ours:%s ", comm, tid, nsecs, cpu, probe);
-	printf("parent_pid=%d child_pid=%d\\n",args->parent_pid, args->child_pid);
+    printf("\\"%s\\"|\\"%d\\"|\\"%llu\\"|\\"%d\\"|\\"MT:%s\\"|", comm, tid, nsecs, cpu, probe);
+	printf("\\"parent_pid=%d child_pid=%d\\"\\n",args->parent_pid, args->child_pid);
 }
 
 kprobe:sock_sendmsg,
@@ -97,8 +98,8 @@ kprobe:____sys_sendmsg
 		$dport = $sk->__sk_common.skc_dport;
 		$rPid = (*((struct upid*)($sk->sk_peer_pid->numbers))).ns->pid_allocated ; 
 		$dport = ($dport >> 8) | (($dport << 8) & 0x00FF00);
-		printf("%s %d %llu %d ours:kprobe:tcp_send ", comm, tid, nsecs, cpu);	
-	    printf("sport=%d dport=%d saddr=%s daddr=%s\\n", $lport, $dport, $saddr, $daddr);
+		printf("\\"%s\\"|\\"%d\\"|\\"%llu\\"|\\"%d\\"|\\"MT:kprobe:tcp_send\\"|", comm, tid, nsecs, cpu);	
+	    printf("\\"sport=%d dport=%d saddr=%s daddr=%s\\"\\n", $lport, $dport, $saddr, $daddr);
 	}
 }
 
@@ -110,20 +111,20 @@ parser.add_argument(
     "-n", "--network", type=str, help="pass docker_network_name", required=True
 )
 parser.add_argument(
-    "-ib",
+    "-i",
     "--inputbt",
     type=str,
     help="pass path/to/customInputBtFile.bt, ensure conditions handled",
 )
 parser.add_argument(
-    "-oi",
-    "--outputinit",
+    "-m",
+    "--meta",
     type=str,
-    help="pass path/to/outputInitFile.txt",
+    help="pass output path/to/meta.txt",
     required=True,
 )
 parser.add_argument(
-    "-ob", "--outputbt", type=str, help="pass path/to/outputBtFile.bt", required=True
+    "-o", "--outputbt", type=str, help="pass output path/to/tracer.bt", required=True
 )
 
 args = parser.parse_args()
@@ -154,13 +155,15 @@ def buildPsList(container, store: list, network: str):
 for container in dockerClient.networks.get(args.network).containers:
     buildPsList(container, psTreeStore, args.network)
 
-initFile = open(args.outputinit, "w")
+metaFile = open(args.meta, "w")
+metaCsvWrite = csv.writer(metaFile, delimiter="|")
 bpfTraceFile = open(args.outputbt, "w")
 
 initPidStr = ""
 for elem in psTreeStore:
     for pid in elem["PIDList"]:
-        print(pid, elem["Name"], elem["IP"], elem["ID"], sep="\t", file=initFile)
+        row = [pid, elem["Name"], elem["IP"], elem["ID"]]
+        metaCsvWrite.writerow(row)
         initPidStr += "@pids[" + str(pid) + "]=1;\n\t"
 
 btScript = btScript.replace("INIT_PID_MAP", initPidStr)
@@ -171,7 +174,7 @@ if args.inputbt:
         for line in inputFile:
             print(line, file=bpfTraceFile, end="")
 
-initFile.close()
+metaFile.close()
 bpfTraceFile.close()
 
 print(

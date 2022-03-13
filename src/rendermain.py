@@ -11,7 +11,7 @@ parser.add_argument(
     "-i",
     "--input",
     type=str,
-    help="pass the path/to/traceProcessor.pickle",
+    help="pass the path/to/dump.pickle",
     required=True,
 )
 parser.add_argument(
@@ -26,10 +26,13 @@ parser.add_argument(
 )
 
 parser.add_argument(
-    "-r", "--range", type=str, help="pass the range, use with type=custom"
+    "-r", "--range", type=str, help="pass the range, required with type=custom"
 )
 parser.add_argument(
-    "-t", "--trace", type=str, help="pass the path/to/trace.txt, use with type=custom"
+    "-t",
+    "--trace",
+    type=str,
+    help="pass the path/to/trace.txt, required with type=custom",
 )
 
 parser.add_argument(

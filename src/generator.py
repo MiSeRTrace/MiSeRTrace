@@ -1,7 +1,7 @@
-from os import name
 import sys
 import argparse
-import subprocess
+import csv
+from tqdm import tqdm
 from core.tracerecord import TraceRecord
 from core.traceprocessor import *
 
@@ -10,10 +10,14 @@ sys.setrecursionlimit(10000)
 # argument parser
 parser = argparse.ArgumentParser()
 parser.add_argument(
-    "-t", "--tracedat", type=str, help="pass the path/to/trace.dat", required=True
+    "-i",
+    "--input",
+    type=str,
+    help="pass the path/to/inputTrace.psv, ensure sorted by time",
+    required=True,
 )
 parser.add_argument(
-    "-i", "--init", type=str, help="pass the path/to/init.txt", required=True
+    "-m", "--meta", type=str, help="pass the path/to/meta.txt", required=True
 )
 parser.add_argument(
     "-g",
@@ -23,56 +27,21 @@ parser.add_argument(
     required=True,
 )
 parser.add_argument(
-    "-d", "--dump", type=str, help="pass the dump/path/directory", required=True
+    "-d", "--dump", type=str, help="pass the dump/path/dump.pickle", required=True
 )
-parser.add_argument(
-    "-L", action="store_true", help="to print line numbers as records are consumed"
-)
-parser.add_argument("-V", action="store_true", help="to print verbose output")
-parser.add_argument("-C", action="store_true", help="to print colored output")
-parser.add_argument("-R", action="store_true", help="to print output in raw format")
+
 args = parser.parse_args()
 
-traceProcessor = TraceProcessor(inputFilePath=args.init, gatewayIP=args.gateway)
-
-printLines = args.L
-lineNumber = 1
-
-
-verbose = args.V
-if verbose:
-    traceProcessor.toPrint = True
-else:
-    traceProcessor.toPrint = False
-
-rawFormat = args.R
-if rawFormat:
-    traceProcessor.rawFormat = True
-else:
-    traceProcessor.rawFormat = False
-
-colored = args.C
-if colored:
-    traceProcessor.colored = True
-else:
-    traceProcessor.colored = False
-
-readFile = open(args.tracedat, "r")
-
-for line in readFile:
-    if printLines:
-        print(lineNumber, end="")
-        lineNumber += 1
-    # print("l" + line)
-    record = TraceRecord(line)
-    if not traceProcessor.consumeRecord(record):
-        print("Record Validation Failed")
-        exit()
-
-    if printLines:
-        print("\n--------\n")
+traceProcessor = TraceProcessor(inputFilePath=args.meta, gatewayIP=args.gateway)
+with open(args.input, "r") as readFile:
+    readCsv = csv.reader(readFile, delimiter="|")
+    for line in tqdm(readCsv, desc="PROCESSING", unit="line"):
+        record = TraceRecord(list(line))
+        if not traceProcessor.consumeRecord(record):
+            print("Record Validation Failed")
+            exit()
 
 traceProcessor.terminate()
+print("DUMPING DATA")
+traceProcessor.dumpFirstPass(args.dump)
 print("Estimated number of requests: ", len(traceProcessor.traceGenesis))
-if args.dump:
-    traceProcessor.dumpFirstPass(args.dump)

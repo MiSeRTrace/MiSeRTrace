@@ -5,6 +5,8 @@ from render.rendercustomhandler.customtracehandler import CustomTraceHandler
 from core.threadstate import ForkThreadState, NetworkThreadState
 from core.tracerecord import TraceRecord
 import json
+import csv
+from tqdm import tqdm
 
 
 class bcolors:
@@ -116,7 +118,13 @@ class RenderCustom(RenderInterface):
     def render(self, **argv):
         traceData, recordHandlers = self.serializeTraceData()
         fp = open(argv["args"].trace, "r")
-        for line in fp:
+        traceCsv = csv.reader(fp, delimiter="|")
+        for line in tqdm(
+            traceCsv,
+            desc="PROCESSING",
+            unit="line",
+            total=self.traceProcessor.recordsProcessed,
+        ):
             record = TraceRecord(line)
             for handler in recordHandlers:
                 handler.consumeRecord(record)

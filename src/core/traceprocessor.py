@@ -4,21 +4,8 @@ from core.tracerecord import *
 from core.tracethread import Thread
 from core.threadstate import ForkThreadState, NetworkThreadState
 from pprint import pprint
+import csv
 import pickle
-
-
-class bcolors:
-    PINK = "\033[95m"
-    BLUE = "\033[94m"
-    CYAN = "\033[96m"
-    GREEN = "\033[92m"
-    YELLOW = "\033[93m"
-    RED = "\033[91m"
-    ENDC = "\033[0m"
-    BOLD = "\033[1m"
-    UNDERLINE = "\033[4m"
-    GETSOCK = "\033[38;5;175m"
-    ADDSOCK = "\033[38;5;175m"
 
 
 class TraceProcessor:
@@ -35,10 +22,12 @@ class TraceProcessor:
         self.tabCount = 0
         self.rawFormat = False
         self.colored = False
+        self.recordsProcessed = 0
 
         with open(inputFilePath, "r") as initialThreads:
-            for line in initialThreads.readlines():
-                pid, container, ip, _ = line.strip().split()
+            csvReader = csv.reader(initialThreads, delimiter="|")
+            for line in csvReader:
+                pid, container, ip, _ = line
                 pid = int(pid)
                 # print(pid)
                 self.ipStore[ip] = container
@@ -69,34 +58,7 @@ class TraceProcessor:
                     threadState.endTimeStamp,
                 )
             ] = dict()
-
             if traceId in threadState.handlingThread.destinationThreadStates:
-                if not self.rawFormat:
-                    if self.colored:
-                        print(
-                            self.tabCount * "\t",
-                            bcolors.PINK,
-                            traceId,
-                            bcolors.BLUE,
-                            bcolors.BOLD,
-                            threadState.handlingThread.container,
-                            "at time",
-                            bcolors.GREEN,
-                            threadState.startTimeStamp,
-                            "to",
-                            bcolors.RED,
-                            threadState.endTimeStamp,
-                        )
-                    else:
-                        print(
-                            self.tabCount * "\t",
-                            traceId,
-                            threadState.handlingThread.container,
-                            "at time",
-                            threadState.startTimeStamp,
-                            "to",
-                            threadState.endTimeStamp,
-                        )
                 self._recursiveFillTraceData(
                     traceId,
                     threadState.startTimeStamp,
@@ -112,9 +74,6 @@ class TraceProcessor:
                         )
                     ],
                 )
-
-        if self.rawFormat:
-            pprint(traceData)
 
     def _recursiveFillTraceData(
         self,
@@ -142,46 +101,8 @@ class TraceProcessor:
                         threadState.endTimeStamp,
                     )
                 ] = dict()
-                if state == "ForkThreadState":
-                    printState = "Fork"
-                else:
-                    printState = "Net"
-                if traceId in threadState.handlingThread.destinationThreadStates:
-                    if not self.rawFormat:
-                        if self.colored:
-                            print(
-                                self.tabCount * "\t",
-                                bcolors.BOLD,
-                                bcolors.PINK,
-                                traceId,
-                                bcolors.BOLD
-                                + bcolors.YELLOW
-                                + printState
-                                + bcolors.ENDC,
-                                bcolors.BOLD,
-                                bcolors.BLUE,
-                                threadState.handlingThread.container,
-                                bcolors.ENDC,
-                                "at time",
-                                bcolors.GREEN,
-                                threadState.startTimeStamp,
-                                bcolors.ENDC,
-                                "to",
-                                bcolors.RED,
-                                threadState.endTimeStamp,
-                            )
-                        else:
-                            print(
-                                self.tabCount * "\t",
-                                traceId,
-                                printState,
-                                threadState.handlingThread.container,
-                                "at time",
-                                threadState.startTimeStamp,
-                                "to",
-                                threadState.endTimeStamp,
-                            )
 
+                if traceId in threadState.handlingThread.destinationThreadStates:
                     self._recursiveFillTraceData(
                         traceId,
                         threadState.startTimeStamp,
@@ -208,6 +129,7 @@ class TraceProcessor:
             else:
                 self.processEvents(record)
         self.lastTimeStamp = record.timeStamp
+        self.recordsProcessed += 1
         return True
 
     # basic validation checks can be added here
