@@ -13,26 +13,26 @@ parser.add_argument(
     "-i",
     "--input",
     type=str,
-    help="pass the path/to/inputTrace.psv, ensure sorted by time",
+    help="path/to/inputTrace.psv, ensure the trace logs are sorted by time",
     required=True,
 )
 parser.add_argument(
-    "-m", "--meta", type=str, help="pass the path/to/meta.txt", required=True
+    "-m", "--metafile", type=str, help="path/to/metaFile.txt", required=True
 )
 parser.add_argument(
     "-g",
     "--gateway",
     type=str,
-    help="pass the gateway ip.in.ipv4.format",
+    help="docker gateway IP in ipv4 format",
     required=True,
 )
 parser.add_argument(
-    "-d", "--dump", type=str, help="pass the dump/path/dump.pickle", required=True
+    "-o", "--output", type=str, help="path/to/dump.pickle", required=True
 )
 
 args = parser.parse_args()
 
-traceProcessor = TraceProcessor(inputFilePath=args.meta, gatewayIP=args.gateway)
+traceProcessor = TraceProcessor(inputFilePath=args.metafile, gatewayIP=args.gateway)
 with open(args.input, "r") as readFile:
     readCsv = csv.reader(readFile, delimiter="|")
     for line in tqdm(readCsv, desc="PROCESSING", unit="line"):
@@ -43,5 +43,5 @@ with open(args.input, "r") as readFile:
 
 traceProcessor.terminate()
 print("DUMPING DATA")
-traceProcessor.dumpFirstPass(args.dump)
+traceProcessor.dumpFirstPass(args.output)
 print("Estimated number of requests: ", len(traceProcessor.traceGenesis))

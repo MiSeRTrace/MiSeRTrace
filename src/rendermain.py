@@ -11,42 +11,45 @@ parser.add_argument(
     "-i",
     "--input",
     type=str,
-    help="pass the path/to/dump.pickle",
+    help="path/to/dump.pickle",
     required=True,
-)
-parser.add_argument(
-    "-rt",
-    "--rendertype",
-    type=str,
-    help="pass the rendertype : " + ",".join([i for i in renderMap.keys()]),
-    required=True,
-)
-parser.add_argument(
-    "-o", "--output", type=str, help="pass the path/to/outputfile.json, default STDOUT"
-)
-
-parser.add_argument(
-    "-r", "--range", type=str, help="pass the range, required with type=custom"
 )
 parser.add_argument(
     "-t",
-    "--trace",
+    "--rendertype",
     type=str,
-    help="pass the path/to/trace.txt, required with type=custom",
-)
-
-parser.add_argument(
-    "-R", action="store_true", help="to print output in raw format, use with type=dag"
+    help=" OR ".join([i for i in renderMap.keys()]),
+    required=True,
 )
 parser.add_argument(
-    "-F",
+    "-o", "--output", type=str, help="path/to/outputfile, default STDOUT"
+)
+parser.add_argument(
+    "-n",
+    "--range",
+    type=str,
+    help="range of request traces to processes, required with type=custom. eg 1-4,6",
+)
+parser.add_argument(
+    "-l",
+    "--tracelogs",
+    type=str,
+    help="path/to/sortedTraceLogs.psv, required with type=custom",
+)
+parser.add_argument(
+    "-r",
     action="store_true",
-    help="to format raw format (works when used with -R), use with type=dag",
+    help="to obtain output in raw json format (works when used with -t dag)",
 )
 parser.add_argument(
-    "-C",
+    "-f",
     action="store_true",
-    help="to print colored output (works when used without -R), use with type=dag",
+    help="to format the raw json (works when used with -r and -t dag)",
+)
+parser.add_argument(
+    "-c",
+    action="store_true",
+    help="to print colored output (works when used with -t dag and WITHOUT -r)",
 )
 args = parser.parse_args()
 
