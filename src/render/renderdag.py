@@ -25,13 +25,13 @@ class RenderDag(RenderInterface):
 
     def render(self, **argv):
         serializedData = self.serializeTraceData()
-        if argv["args"].R:
-            if argv["args"].F:
+        if argv["args"].r:
+            if argv["args"].f:
                 print(json.dumps(serializedData, indent=4), file=self.outputFile)
             else:
                 print(json.dumps(serializedData), file=self.outputFile)
         else:
-            self.printData(serializedData, argv["args"].C)
+            self.printData(serializedData, argv["args"].c)
 
     def serializeTraceData(self):
         traceData = dict()

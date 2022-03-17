@@ -10,8 +10,12 @@ q = deque()
 
 parser = argparse.ArgumentParser()
 
-parser.add_argument("-i", "--input", type=str, help="pass path/to/inputTrace.psv")
-parser.add_argument("-o", "--output", type=str, help="pass path/to/sortedOutput.psv")
+parser.add_argument(
+    "-i", "--input", type=str, required=True, help="path/to/inputTrace.psv"
+)
+parser.add_argument(
+    "-o", "--output", type=str, required=True, help="path/to/sortedOutput.psv"
+)
 
 args = parser.parse_args()
 

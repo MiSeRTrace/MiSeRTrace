@@ -98,7 +98,7 @@ kprobe:____sys_sendmsg
 		$dport = $sk->__sk_common.skc_dport;
 		$rPid = (*((struct upid*)($sk->sk_peer_pid->numbers))).ns->pid_allocated ; 
 		$dport = ($dport >> 8) | (($dport << 8) & 0x00FF00);
-		printf("\\"%s\\"|\\"%d\\"|\\"%llu\\"|\\"%d\\"|\\"MT:kprobe:tcp_send\\"|", comm, tid, nsecs, cpu);	
+		printf("\\"%s\\"|\\"%d\\"|\\"%llu\\"|\\"%d\\"|\\"MT:tcp_send\\"|", comm, tid, nsecs, cpu);	
 	    printf("\\"sport=%d dport=%d saddr=%s daddr=%s\\"\\n", $lport, $dport, $saddr, $daddr);
 	}
 }
@@ -108,23 +108,23 @@ kprobe:____sys_sendmsg
 parser = argparse.ArgumentParser()
 
 parser.add_argument(
-    "-n", "--network", type=str, help="pass docker_network_name", required=True
+    "-n", "--network", type=str, help="docker_network_name", required=True
 )
 parser.add_argument(
     "-i",
     "--inputbt",
     type=str,
-    help="pass path/to/customInputBtFile.bt, ensure conditions handled",
+    help="path/to/customInputBtFile.bt, ensure that the filter /@pids[tid] == 1/ is present for every probe so as to trace only the processes in your docker network",
 )
 parser.add_argument(
     "-m",
-    "--meta",
+    "--metafile",
     type=str,
-    help="pass output path/to/meta.txt",
+    help="path/to/outputMetaFile.txt",
     required=True,
 )
 parser.add_argument(
-    "-o", "--outputbt", type=str, help="pass output path/to/tracer.bt", required=True
+    "-o", "--outputbt", type=str, help="path/to/outputBtFile.bt", required=True
 )
 
 args = parser.parse_args()
@@ -155,7 +155,7 @@ def buildPsList(container, store: list, network: str):
 for container in dockerClient.networks.get(args.network).containers:
     buildPsList(container, psTreeStore, args.network)
 
-metaFile = open(args.meta, "w")
+metaFile = open(args.metafile, "w")
 metaCsvWrite = csv.writer(metaFile, delimiter="|")
 bpfTraceFile = open(args.outputbt, "w")
 
@@ -178,12 +178,12 @@ metaFile.close()
 bpfTraceFile.close()
 
 print(
-    'Use Command : "BPFTRACE_PERF_RB_PAGES=<Buffer Size in Pages> BPFTRACE_MAP_KEYS_MAX=<Maximum number of Unique Threads that can be traced> BPFTRACE_LOG_SIZE=<Max Log size to store .bt> bpftrace '
+    'Use Command : "BPFTRACE_PERF_RB_PAGES=<Buffer Size in Pages> BPFTRACE_MAP_KEYS_MAX=<Value greater than maximum number of unique pids in the docker network> BPFTRACE_LOG_SIZE=<Size in bytes of the log to store the .bt file> bpftrace '
     + args.outputbt
-    + '"'
+    + '> trace.psv"'
 )
-print(
-    'eg: "BPFTRACE_PERF_RB_PAGES=131072 BPFTRACE_MAP_KEYS_MAX=4194304 BPFTRACE_LOG_SIZE=750000000 bpftrace '
-    + args.outputbt
-    + '"'
-)
+# print(
+#     'eg: "BPFTRACE_PERF_RB_PAGES=131072 BPFTRACE_MAP_KEYS_MAX=4194304 BPFTRACE_LOG_SIZE=750000000 bpftrace '
+#     + args.outputbt
+#     + '"'
+# )

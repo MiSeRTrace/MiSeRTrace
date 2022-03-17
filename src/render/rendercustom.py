@@ -117,7 +117,7 @@ class RenderCustom(RenderInterface):
 
     def render(self, **argv):
         traceData, recordHandlers = self.serializeTraceData()
-        fp = open(argv["args"].trace, "r")
+        fp = open(argv["args"].tracelogs, "r")
         traceCsv = csv.reader(fp, delimiter="|")
         for line in tqdm(
             traceCsv,
@@ -128,8 +128,8 @@ class RenderCustom(RenderInterface):
             record = TraceRecord(line)
             for handler in recordHandlers:
                 handler.consumeRecord(record)
-        if argv["args"].R:
-            if argv["args"].F:
+        if argv["args"].r:
+            if argv["args"].f:
                 print(
                     json.dumps(self.serializeOutput(traceData), indent=4),
                     file=self.outputFile,
@@ -137,7 +137,7 @@ class RenderCustom(RenderInterface):
             else:
                 print(json.dumps(self.serializeOutput(traceData)), file=self.outputFile)
         else:
-            self.printData(self.serializeOutput(traceData), argv["args"].C)
+            self.printData(self.serializeOutput(traceData), argv["args"].c)
 
     def _recursiveSerializeOutput(self, traceData, outputData):
         for span in traceData:
