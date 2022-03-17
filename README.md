@@ -66,9 +66,9 @@ arguments:
 2) To generate request traces from the captured spans
 
 ```
-usage: rendermain.py [-h] -i INPUT -t RENDERTYPE [-o OUTPUT] [-n RANGE] [-l TRACELOGS] [-r] [-f] [-c]
+rendermain.py [-h] -i INPUT -t RENDERTYPE [-o OUTPUT] [-n RANGE] [-l TRACELOGS] [-r] [-f] [-c]
 
-optional arguments:
+arguments:
   -h, --help                              show this help message and exit
   -i INPUT, --input INPUT                 path/to/dump.pickle
   -t RENDERTYPE, --rendertype RENDERTYPE  dag OR custom
@@ -90,7 +90,7 @@ If the render type chosen is custom, MiSeRTrace enables the ability to provide c
 
 To obtain more information about the architecture of MiSeRTrace, please look through the following paper. Please cite our work if you found MiSeRTrace helpful.
 
-Thrivikraman V, Vishnu R Dixit, Nikhil Ram S, Vikas K Gowda, Santhosh Kumar Vasudevan, and Subramaniam Kalambur. 2022. MiSeRTrace: Kernel-level Request Tracing for Microservice Visibility. In Companion of the 2022 ACM/SPEC International Conference on Performance Engineering (ICPE ’22), April 9–13, 2022, Bejing, China. ACM, New York, NY, USA, 4 pages. https://doi.org/10.1145/XXXXXX.XXXXXX
+Thrivikraman V, Vishnu R Dixit, Nikhil Ram S, Vikas K Gowda, Santhosh Kumar Vasudevan, and Subramaniam Kalambur. 2022. MiSeRTrace: Kernel-level Request Tracing for Microservice Visibility. In Companion of the 2022 ACM/SPEC International Conference on Performance Engineering (ICPE ’22), April 9–13, 2022, Bejing, China. ACM, New York, NY, USA, 4 pages.
 
 <!-- - Record idle-always-running PIDS of the application
 - Record IPs of the running containers
