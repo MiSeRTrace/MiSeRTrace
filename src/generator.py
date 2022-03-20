@@ -18,7 +18,7 @@ parser.add_argument(
     required=True,
 )
 parser.add_argument(
-    "-m", "--metafile", type=str, help="path/to/metaFile.txt", required=True
+    "-m", "--metafile", type=str, help="path/to/metaFile.psv", required=True
 )
 parser.add_argument(
     "-g",

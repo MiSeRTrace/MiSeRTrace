@@ -56,7 +56,7 @@ tracepoint:syscalls:sys_exit_read
 tracepoint:sched:sched_process_exit
 /@pids[tid] == 1/
 {
-    printf("\\"%s\\"|\\"%d\\"|\\"%llu\\"|\\"%d\\"|\\"MT:%s\\"pid=%d\\"\\n", comm, tid, nsecs, cpu, probe, args->pid);
+    printf("\\"%s\\"|\\"%d\\"|\\"%llu\\"|\\"%d\\"|\\"MT:%s\\"|\\"pid=%d\\"\\n", comm, tid, nsecs, cpu, probe, args->pid);
     @pids[args->pid]=0;
 }
 
@@ -91,7 +91,7 @@ kprobe:____sys_sendmsg
 		$dport = $sk->__sk_common.skc_dport;
 		$rPid = (*((struct upid*)($sk->sk_peer_pid->numbers))).ns->pid_allocated ; 
 		$dport = ($dport >> 8) | (($dport << 8) & 0x00FF00);
-		printf("\\"%s\\"|\\"%d\\"|\\"%llu\\"|\\"%d\\"|\\"MT:kprobe:tcp_send\\"|", comm, tid, nsecs, cpu);	
+		printf("\\"%s\\"|\\"%d\\"|\\"%llu\\"|\\"%d\\"|\\"MT:tcp_send\\"|", comm, tid, nsecs, cpu);	
 	    printf("\\"sport=%d dport=%d saddr=%s daddr=%s\\"\\n", $lport, $dport, $saddr, $daddr);
 	}
 }

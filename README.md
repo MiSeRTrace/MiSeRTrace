@@ -12,7 +12,7 @@
 ### Pre-requisites -
 
 1) Python >= v3.8
-2) `pip3 install -r requirements/requirements.txt`
+2) `pip3 install -r requirements/python3_requirements.txt`
 3) It is recommended to build the latest version of bpftrace from source, since bpftrace is rapidly growing. This page (https://github.com/iovisor/bpftrace/blob/master/INSTALL.md) can used as a reference.
 
 ### Initial setup before tracing -
@@ -27,9 +27,23 @@ python3 utils/gen-init-data.py [-h] -n NETWORK [-i INPUTBT] -m METAFILE -o OUTPU
 arguments:
   -h, --help                        show this help message and exit
   -n NETWORK, --network NETWORK     docker_network_name
-  -i INPUTBT, --inputbt INPUTBT     path/to/customInputBtFile.bt, ensure that the filter /@pids[tid] == 1/ is present for every probe so as to trace only the processes in your docker network
-  -m METAFILE, --metafile METAFILE  path/to/outputMetaFile.txt
+  -i INPUTBT, --inputbt INPUTBT     path/to/customInputBtFile.bt
+  -m METAFILE, --metafile METAFILE  path/to/outputMetaFile.psv
   -o OUTPUTBT, --outputbt OUTPUTBT  path/to/outputBtFile.bt
+```
+#####INPUTBT file format
+
+```c
+custom_event
+/@pids[tid] == 1/ //trace only the processes in the docker network
+{
+    printf("\"%s\"|\"%d\"|\"%llu\"|\"%d\"|\"%s\"|", comm, tid, nsecs, cpu, probe);
+    \*
+    CUSTOM PRINT
+    *\
+    printf("\n");      
+}
+
 ```
 
 ### Running a workload and recording the kernel traces -
@@ -64,7 +78,7 @@ python3 src/generator.py [-h] -i INPUT -m METAFILE -g GATEWAY -o OUTPUT
 arguments:
   -h, --help                        show this help message and exit
   -i INPUT, --input INPUT           path/to/inputTrace.psv, ensure the trace logs are sorted by time
-  -m METAFILE, --metafile METAFILE  path/to/metaFile.txt
+  -m METAFILE, --metafile METAFILE  path/to/metaFile.psv
   -g GATEWAY, --gateway GATEWAY     pass the docker gateway ip in ipv4 format
   -o OUTPUT, --output OUTPUT        path/to/dump.pickle
 ```

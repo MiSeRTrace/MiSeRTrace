@@ -63,7 +63,7 @@ tracepoint:syscalls:sys_exit_read
 tracepoint:sched:sched_process_exit
 /@pids[tid] == 1/
 {
-    printf("\\"%s\\"|\\"%d\\"|\\"%llu\\"|\\"%d\\"|\\"MT:%s\\"pid=%d\\"\\n", comm, tid, nsecs, cpu, probe, args->pid);
+    printf("\\"%s\\"|\\"%d\\"|\\"%llu\\"|\\"%d\\"|\\"MT:%s\\"|\\"pid=%d\\"\\n", comm, tid, nsecs, cpu, probe, args->pid);
     @pids[args->pid]=0;
 }
 
@@ -110,17 +110,12 @@ parser = argparse.ArgumentParser()
 parser.add_argument(
     "-n", "--network", type=str, help="docker_network_name", required=True
 )
-parser.add_argument(
-    "-i",
-    "--inputbt",
-    type=str,
-    help="path/to/customInputBtFile.bt, ensure that the filter /@pids[tid] == 1/ is present for every probe so as to trace only the processes in your docker network",
-)
+parser.add_argument("-i", "--inputbt", type=str, help="path/to/customInputBtFile.bt")
 parser.add_argument(
     "-m",
     "--metafile",
     type=str,
-    help="path/to/outputMetaFile.txt",
+    help="path/to/outputMetaFile.psv",
     required=True,
 )
 parser.add_argument(
