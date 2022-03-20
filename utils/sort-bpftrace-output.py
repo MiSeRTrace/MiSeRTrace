@@ -1,3 +1,4 @@
+#!/usr/bin/python3
 import argparse
 import threading
 from time import sleep

@@ -12,7 +12,7 @@
 ### Pre-requisites -
 
 1) Python >= v3.8
-2) `pip3 install -r ./requirements/requirements.txt`
+2) `pip3 install -r requirements/requirements.txt`
 3) It is recommended to build the latest version of bpftrace from source, since bpftrace is rapidly growing. This page (https://github.com/iovisor/bpftrace/blob/master/INSTALL.md) can used as a reference.
 
 ### Initial setup before tracing -
@@ -22,7 +22,7 @@ Start your microservice application (MiSeRTrace currently supports Docker as the
 By default, the OUTPUTBT FILE contains the probes used by MiSeRTrace in its implementation. If you wish to monitor some extra events provided by bpftrace, the .bt file containing these probes has to be passed as the INPUTBT argument.
 
 ```
-usage: gen-init-data.py [-h] -n NETWORK [-i INPUTBT] -m METAFILE -o OUTPUTBT
+python3 utils/gen-init-data.py [-h] -n NETWORK [-i INPUTBT] -m METAFILE -o OUTPUTBT
 
 arguments:
   -h, --help                        show this help message and exit
@@ -45,7 +45,7 @@ Once the workload is complete, ensure that all the data has been moved from the 
 Pass the captured pipe-separated trace file to `sort-bpftrace-output.py` to ensure the trace logs are globally time-ordered across all CPUs.
 
 ```
-usage: sort-bpftrace-output.py [-h] -i INPUT -o OUTPUT
+python3 utils/sort-bpftrace-output.py [-h] -i INPUT -o OUTPUT
 
 arguments:
   -h, --help                  show this help message and exit
@@ -59,7 +59,7 @@ arguments:
 1) To capture the request spans from the trace logs
 
 ```
-generator.py [-h] -i INPUT -m METAFILE -g GATEWAY -o OUTPUT
+python3 src/generator.py [-h] -i INPUT -m METAFILE -g GATEWAY -o OUTPUT
 
 arguments:
   -h, --help                        show this help message and exit
@@ -72,7 +72,7 @@ arguments:
 2) To generate request traces from the captured spans
 
 ```
-rendermain.py [-h] -i INPUT -t RENDERTYPE [-o OUTPUT] [-n RANGE] [-l TRACELOGS] [-r] [-f] [-c]
+python3 src/rendermain.py [-h] -i INPUT -t RENDERTYPE [-o OUTPUT] [-n RANGE] [-l TRACELOGS] [-r] [-f] [-c]
 
 arguments:
   -h, --help                              show this help message and exit
