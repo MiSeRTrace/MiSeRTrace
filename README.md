@@ -9,7 +9,13 @@
 
 ## How to use MiSeRTrace?
 
-### Setting up required initial data for tracing -
+### Pre-requisites -
+
+1) Python >= v3.8
+2) `pip3 install -r ./requirements/requirements.txt`
+3) It is recommended to build the latest version of bpftrace from source, since bpftrace is rapidly growing. This page (https://github.com/iovisor/bpftrace/blob/master/INSTALL.md) can used as a reference.
+
+### Initial setup before tracing -
 
 Start your microservice application (MiSeRTrace currently supports Docker as the containerization engine), and then run `gen-init-data.py`.
 
