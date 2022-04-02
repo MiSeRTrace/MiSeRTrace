@@ -52,6 +52,14 @@ parser.add_argument(
     action="store_true",
     help="to print colored output (works when used with -t dag and WITHOUT -r)",
 )
+parser.add_argument(
+    "-b",
+    "--backend",
+    type=str,
+    help="Specify the tracing backend",
+    required=True,
+)
+
 args = parser.parse_args()
 
 outputFile = sys.stdout

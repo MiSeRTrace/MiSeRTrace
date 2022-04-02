@@ -31,13 +31,31 @@ parser.add_argument(
     "-o", "--output", type=str, help="path/to/dump.pickle", required=True
 )
 
+"""
+TV: Add docs -b --backlog in generator AND rendermain
+Ftrace only 10e-6 unless -t flag ####
+Parsing of ip in custom kprobe
+"""
+
+parser.add_argument(
+    "-b",
+    "--backend",
+    type=str,
+    help="Specify the tracing backend",
+    required=True,
+)
+
 args = parser.parse_args()
 
 traceProcessor = TraceProcessor(inputFilePath=args.metafile, gatewayIP=args.gateway)
 with open(args.input, "r") as readFile:
-    readCsv = csv.reader(readFile, delimiter="|")
+    backend = args.backend
+    if backend == "bpftrace":
+        readCsv = csv.reader(readFile, delimiter="|")
+    elif backend == "ftrace":
+        readCsv = csv.reader(readFile, delimiter=" ")
     for line in tqdm(readCsv, desc="PROCESSING", unit="line"):
-        record = TraceRecord(list(line))
+        record = TraceRecord(list(line), args.backend)
         if not traceProcessor.consumeRecord(record):
             print("Record Validation Failed")
             exit()

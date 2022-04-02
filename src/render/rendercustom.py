@@ -118,7 +118,11 @@ class RenderCustom(RenderInterface):
     def render(self, **argv):
         traceData, recordHandlers = self.serializeTraceData()
         fp = open(argv["args"].tracelogs, "r")
-        traceCsv = csv.reader(fp, delimiter="|")
+        backend = argv["args"].backend
+        if backend == "bpftrace":
+            traceCsv = csv.reader(fp, delimiter="|")
+        elif backend == "ftrace":
+            traceCsv = csv.reader(fp, delimiter=" ")
         for line in tqdm(
             traceCsv,
             desc="PROCESSING",
