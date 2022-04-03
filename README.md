@@ -110,8 +110,9 @@ If the render type chosen is custom, MiSeRTrace enables the ability to provide c
 
 To obtain more information about the architecture of MiSeRTrace, please look through the following paper. Please cite our work if you found MiSeRTrace helpful.
 
-Thrivikraman V, Vishnu R Dixit, Nikhil Ram S, Vikas K Gowda, Santhosh Kumar Vasudevan, and Subramaniam Kalambur. 2022. MiSeRTrace: Kernel-level Request Tracing for Microservice Visibility. In Companion of the 2022 ACM/SPEC International Conference on Performance Engineering (ICPE ’22), April 9–13, 2022, Bejing, China. ACM, New York, NY, USA, 4 pages.
+*Thrivikraman V, *Vishnu R Dixit, *Nikhil Ram S, *Vikas K Gowda, Santhosh Kumar Vasudevan, and Subramaniam Kalambur. 2022. MiSeRTrace: Kernel-level Request Tracing for Microservice Visibility. In Companion of the 2022 ACM/SPEC International Conference on Performance Engineering (ICPE ’22), April 9–13, 2022, Bejing, China. ACM, New York, NY, USA, 4 pages.
 
+*\* contributed equally to the work*
 <!-- - Record idle-always-running PIDS of the application
 - Record IPs of the running containers
 - The resulting file should be in the format should be in the format : `PID Container_Name Container_IP Container_Hash` separated by whitespace
