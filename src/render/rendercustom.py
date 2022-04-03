@@ -1,7 +1,7 @@
 from io import TextIOWrapper
 from render.renderinterface import RenderInterface
-from render.rendercustomhandler.customthreadstaterender import CustomThreadStateRender
-from render.rendercustomhandler.customtracehandler import CustomTraceHandler
+from render.customrenders.customthreadstatehandler import CustomThreadStateHandler
+from render.customrenders.customtracehandler import CustomTraceHandler
 from core.threadstate import ForkThreadState, NetworkThreadState
 from core.tracerecord import TraceRecord
 import json
@@ -26,7 +26,10 @@ class bcolors:
 class RenderCustom(RenderInterface):
     def __init__(self, fileObject: TextIOWrapper, **argv):
         super().__init__(fileObject)
-        self.rangeSet = self.getRangeSet(argv["args"].range)
+        if argv["args"].range:
+            self.rangeSet = self.getRangeSet(argv["args"].range)
+        else:
+            self.rangeSet = set(i for i in range(1, self.traceProcessor.traceID + 1))
         self.outputFile = argv["outputFile"]
 
     def getRangeSet(self, rangeStr: str):
@@ -52,7 +55,7 @@ class RenderCustom(RenderInterface):
         for traceId in self.rangeSet:
             threadStateObject = self.traceProcessor.traceGenesis[traceId]
             customTraceHandler = CustomTraceHandler(traceId, self.traceProcessor)
-            customThreadStateHandler = CustomThreadStateRender(
+            customThreadStateHandler = CustomThreadStateHandler(
                 traceId, threadStateObject, self.traceProcessor, customTraceHandler
             )
             traceData[traceId] = {
@@ -92,7 +95,7 @@ class RenderCustom(RenderInterface):
                 and threadStateObject.startTimeStamp >= parentStateStartTimeStamp
             ):
                 visited.add(threadStateObject)
-                customThreadStateHandler = CustomThreadStateRender(
+                customThreadStateHandler = CustomThreadStateHandler(
                     traceId, threadStateObject, traceProcessor, customTraceHandler
                 )
                 recordHandlers.add(customThreadStateHandler)
@@ -126,8 +129,11 @@ class RenderCustom(RenderInterface):
             total=self.traceProcessor.recordsProcessed,
         ):
             record = TraceRecord(line)
+            popSet = set()
             for handler in recordHandlers:
-                handler.consumeRecord(record)
+                if not handler.consumeRecord(record):
+                    popSet.add(handler)
+            recordHandlers -= popSet
         if argv["args"].r:
             if argv["args"].f:
                 print(

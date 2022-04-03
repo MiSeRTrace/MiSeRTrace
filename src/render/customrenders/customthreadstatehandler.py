@@ -5,7 +5,7 @@ from .customtracehandler import CustomTraceHandler
 import json
 
 
-class CustomThreadStateRender:
+class CustomThreadStateHandler:
     def __init__(self, traceId, threadState, traceProcessor, customTraceHandler):
         self.traceId: int = traceId
         self.threadState: NetworkThreadState or ForkThreadState = threadState
@@ -14,16 +14,15 @@ class CustomThreadStateRender:
         self.customInit()
 
     def consumeRecord(self, record: TraceRecord):
+        if self.threadState.endTimeStamp < record.timeStamp:
+            return False
         if (
-            (
-                self.threadState.handlingThread.pid == record.pid
-                or self.customRecordValid(record)
-            )
-            and self.threadState.startTimeStamp <= record.timeStamp
-            and self.threadState.endTimeStamp >= record.timeStamp
-        ):
+            self.threadState.handlingThread.pid == record.pid
+            or self.customRecordValid(record)
+        ) and self.threadState.startTimeStamp <= record.timeStamp:
             self.traceHandler.consumeRecord(record)
             self.customConsumeRecord(record)
+        return True
 
     def retrieveData(self) -> dict:
         return self.customRetrieveData()

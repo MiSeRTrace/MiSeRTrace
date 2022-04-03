@@ -29,28 +29,28 @@ parser.add_argument(
     "-n",
     "--range",
     type=str,
-    help="range of request traces to processes, required with type=custom. eg 1-4,6",
+    help="range of request traces to process, eg 1-4,6. All request traces processed by default",
 )
 parser.add_argument(
     "-l",
     "--tracelogs",
     type=str,
-    help="path/to/sortedTraceLogs.psv, required with type=custom",
+    help="path/to/sortedTraceLogs.psv, required with rendertype=custom",
 )
 parser.add_argument(
     "-r",
     action="store_true",
-    help="to obtain output in raw json format (works when used with -t dag)",
+    help="to obtain output in raw json format (works when used with rendertype=dag)",
 )
 parser.add_argument(
     "-f",
     action="store_true",
-    help="to format the raw json (works when used with -r and -t dag)",
+    help="to format the raw json (works when used with -r and rendertype=dag)",
 )
 parser.add_argument(
     "-c",
     action="store_true",
-    help="to print colored output (works when used with -t dag and WITHOUT -r)",
+    help="to print colored output (works when used with rendertype=dag and WITHOUT -r)",
 )
 args = parser.parse_args()
 
