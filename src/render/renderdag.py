@@ -117,9 +117,10 @@ class RenderDag(RenderInterface):
                     "at time",
                     bcolors.GREEN,
                     traceDetails["ThreadState"]["StartTime"],
-                    "to",
+                    "for",
                     bcolors.RED,
-                    traceDetails["ThreadState"]["EndTime"],
+                    traceDetails["ThreadState"]["EndTime"]
+                    - traceDetails["ThreadState"]["StartTime"],
                     file=self.outputFile,
                 )
             else:
@@ -130,8 +131,9 @@ class RenderDag(RenderInterface):
                     traceDetails["ThreadState"]["PID"],
                     "at time",
                     traceDetails["ThreadState"]["StartTime"],
-                    "to",
-                    traceDetails["ThreadState"]["EndTime"],
+                    "for",
+                    traceDetails["ThreadState"]["EndTime"]
+                    - traceDetails["ThreadState"]["StartTime"],
                     file=self.outputFile,
                 )
             self.recPrintData(traceDetails["Children"], colored, 1)
@@ -159,9 +161,9 @@ class RenderDag(RenderInterface):
                     bcolors.GREEN,
                     span["ThreadState"]["StartTime"],
                     bcolors.ENDC,
-                    "to",
+                    "for",
                     bcolors.RED,
-                    span["ThreadState"]["EndTime"],
+                    span["ThreadState"]["EndTime"] - span["ThreadState"]["StartTime"],
                     file=self.outputFile,
                 )
             else:
@@ -173,8 +175,8 @@ class RenderDag(RenderInterface):
                     span["ThreadState"]["PID"],
                     "at time",
                     span["ThreadState"]["StartTime"],
-                    "to",
-                    span["ThreadState"]["EndTime"],
+                    "for",
+                    span["ThreadState"]["EndTime"] - span["ThreadState"]["StartTime"],
                     file=self.outputFile,
                 )
             self.recPrintData(span["Children"], colored, depth + 1)
