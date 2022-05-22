@@ -114,13 +114,14 @@ class RenderDag(RenderInterface):
                     bcolors.CYAN,
                     traceDetails["ThreadState"]["PID"],
                     bcolors.ENDC,
-                    "at time",
+                    "at timestamp",
                     bcolors.GREEN,
                     traceDetails["ThreadState"]["StartTime"],
-                    "for",
+                    "for a duration of",
                     bcolors.RED,
                     traceDetails["ThreadState"]["EndTime"]
                     - traceDetails["ThreadState"]["StartTime"],
+                    "ns",
                     file=self.outputFile,
                 )
             else:
@@ -129,11 +130,12 @@ class RenderDag(RenderInterface):
                     traceDetails["ThreadState"]["Container"],
                     "with PID",
                     traceDetails["ThreadState"]["PID"],
-                    "at time",
+                    "at timestamp",
                     traceDetails["ThreadState"]["StartTime"],
-                    "for",
+                    "for a duration of",
                     traceDetails["ThreadState"]["EndTime"]
                     - traceDetails["ThreadState"]["StartTime"],
+                    "ns",
                     file=self.outputFile,
                 )
             self.recPrintData(traceDetails["Children"], colored, 1)
@@ -157,13 +159,14 @@ class RenderDag(RenderInterface):
                     bcolors.CYAN,
                     span["ThreadState"]["PID"],
                     bcolors.ENDC,
-                    "at time",
+                    "at timestamp",
                     bcolors.GREEN,
                     span["ThreadState"]["StartTime"],
                     bcolors.ENDC,
-                    "for",
+                    "for a duration of",
                     bcolors.RED,
                     span["ThreadState"]["EndTime"] - span["ThreadState"]["StartTime"],
+                    "ns",
                     file=self.outputFile,
                 )
             else:
@@ -173,10 +176,11 @@ class RenderDag(RenderInterface):
                     span["ThreadState"]["Container"],
                     "with PID",
                     span["ThreadState"]["PID"],
-                    "at time",
+                    "at timestamp",
                     span["ThreadState"]["StartTime"],
-                    "for",
+                    "for a duration of",
                     span["ThreadState"]["EndTime"] - span["ThreadState"]["StartTime"],
+                    "ns",
                     file=self.outputFile,
                 )
             self.recPrintData(span["Children"], colored, depth + 1)
