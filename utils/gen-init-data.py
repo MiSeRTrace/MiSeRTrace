@@ -25,9 +25,7 @@ tracepoint:tcp:tcp_probe
 {
 	$saddr = (args->saddr);
 	$daddr = (args->daddr);
-	printf("\\"%s\\"|\\"%d\\"|\\"%llu\\"|\\"%d\\"|\\"MT:%s\\"|", comm, tid, nsecs, cpu, probe);
-	printf("\\"sport=%d dport=%d saddr=%d.%d.%d.%d ",  args->sport, args->dport, $saddr[4], $saddr[5], $saddr[6], $saddr[7]);
-	printf("daddr=%d.%d.%d.%d\\"\\n", $daddr[4], $daddr[5], $daddr[6], $daddr[7]);
+	printf("\\"%s\\"|\\"%d\\"|\\"%llu\\"|\\"%d\\"|\\"MT:%s\\"|\\"sport=%d dport=%d saddr=%d.%d.%d.%d daddr=%d.%d.%d.%d\\"\\n", comm, tid, nsecs, cpu, probe, args->sport, args->dport, $saddr[4], $saddr[5], $saddr[6], $saddr[7], $daddr[4], $daddr[5], $daddr[6], $daddr[7]);
 }
 
 tracepoint:tcp:tcp_rcv_space_adjust
@@ -35,8 +33,7 @@ tracepoint:tcp:tcp_rcv_space_adjust
 {
 	$saddr = ntop(args->saddr);
 	$daddr = ntop(args->daddr);
-	printf("\\"%s\\"|\\"%d\\"|\\"%llu\\"|\\"%d\\"|\\"MT:%s\\"|", comm, tid, nsecs, cpu, probe);	
-	printf("\\"sport=%d dport=%d saddr=%s daddr=%s\\"\\n", args->sport, args->dport, $saddr, $daddr);
+	printf("\\"%s\\"|\\"%d\\"|\\"%llu\\"|\\"%d\\"|\\"MT:%s\\"|\\"sport=%d dport=%d saddr=%s daddr=%s\\"\\n", comm, tid, nsecs, cpu, probe, args->sport, args->dport, $saddr, $daddr);
 }
 
 tracepoint:syscalls:sys_enter_sendto,
@@ -71,8 +68,7 @@ tracepoint:sched:sched_process_fork
 /@pids[tid] == 1/
 {
     @pids[args->child_pid] = 1;
-    printf("\\"%s\\"|\\"%d\\"|\\"%llu\\"|\\"%d\\"|\\"MT:%s\\"|", comm, tid, nsecs, cpu, probe);
-	printf("\\"parent_pid=%d child_pid=%d\\"\\n",args->parent_pid, args->child_pid);
+    printf("\\"%s\\"|\\"%d\\"|\\"%llu\\"|\\"%d\\"|\\"MT:%s\\"|\\"parent_pid=%d child_pid=%d\\"\\n", comm, tid, nsecs, cpu, probe, args->parent_pid, args->child_pid);
 }
 
 kprobe:sock_sendmsg,
@@ -98,8 +94,7 @@ kprobe:____sys_sendmsg
 		$dport = $sk->__sk_common.skc_dport;
 		$rPid = (*((struct upid*)($sk->sk_peer_pid->numbers))).ns->pid_allocated ; 
 		$dport = ($dport >> 8) | (($dport << 8) & 0x00FF00);
-		printf("\\"%s\\"|\\"%d\\"|\\"%llu\\"|\\"%d\\"|\\"MT:tcp_send\\"|", comm, tid, nsecs, cpu);	
-	    printf("\\"sport=%d dport=%d saddr=%s daddr=%s\\"\\n", $lport, $dport, $saddr, $daddr);
+		printf("\\"%s\\"|\\"%d\\"|\\"%llu\\"|\\"%d\\"|\\"MT:tcp_send\\"|\\"sport=%d dport=%d saddr=%s daddr=%s\\"\\n", comm, tid, nsecs, cpu, $lport, $dport, $saddr, $daddr);
 	}
 }
 

@@ -38,19 +38,20 @@ arguments:
 
 By default, the OUTPUTBT FILE contains the probes used by MiSeRTrace in its implementation. If you wish to monitor more events provided by bpftrace, the .bt file containing these probes has to be passed as the INPUTBT argument.
 
-Format of the probes in the INPUTBT FILE (the CUSTOM_EVENT and CUSTOM_CODE sections can be modified) -
+Format of the probes in the INPUTBT FILE (the CUSTOM_EVENT, CUSTOM_CODE and CUSTOM_PRINT sections can be modified) -
 
 ```c
 CUSTOM_EVENT
 /@pids[tid] == 1/ //to ensure that only the processes in the docker network are traced
 {
-    printf("\"%s\"|\"%d\"|\"%llu\"|\"%d\"|\"%s\"|", comm, tid, nsecs, cpu, probe);
     \*
     CUSTOM_CODE
     *\
-    printf("\n");      
+    printf("\"%s\"|\"%d\"|\"%llu\"|\"%d\"|\"%s\"| CUSTOM_PRINT \n", comm, tid, nsecs, cpu, probe);    
 }
 ```
+
+It is recommended to have only a single printf call in every probe. If multiple printfs are used in a single probe, the print outputs might be separated from one another in the captured trace logs since the volume of data being captured is high. Every printf call should print five compulsory pipe-separated values as listed in the code block above.
 
 ### Running a workload and recording the kernel traces -
 
